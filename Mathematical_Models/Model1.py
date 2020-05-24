@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import random
 from itertools import *
 from gurobipy import *
-from feasibleSol import  Route
 ###############################################
 
 def routes_finder(X,NN):
@@ -116,12 +115,12 @@ def Model1(Data,R):
     
     x=VF_MIP.addVars(complement,M,name="x",vtype=GRB.BINARY)
     delta=VF_MIP.addVars(x,lb=0,name="delta")
-    v = VF_MIP.addVars(Gc.node ,lb=0,name="v")
+    v = VF_MIP.addVars(Gc.nodes ,lb=0,name="v")
     tp= VF_MIP.addVars(Gc.nodes,Gc.nodes,lb=0 , name="tp")   
     tn= VF_MIP.addVars(Gc.nodes,Gc.nodes,lb=0 , name="tn") 
     VF_MIP.update()
     
-    VF_MIP.setObjective(quicksum(G.node[i]['demand'] -v[i] for i in  Gc.nodes)
+    VF_MIP.setObjective(quicksum(G.nodes[i]['demand'] -v[i] for i in  Gc.nodes)
                         + (Lambda/TotalD) * quicksum(tp[i,j] + tn[i,j] for i,j in tp.keys())
                         +Gamma/R * ( Data.Total_dis_epsilon -  quicksum(Dis[i,j]*x[i,j,k] for k in range(M) for i,j in complement if j!=NN+1 ) ) )
     
@@ -129,24 +128,20 @@ def Model1(Data,R):
     
     VF_MIP.addConstr(quicksum(Dis[i,j]*x[i,j,k] for k in range(M) for i,j in complement if j!=NN+1 ) <= Data.Total_dis_epsilon )
     VF_MIP.addConstrs(tp[i,j]-tn[i,j] ==
-        v[i]*G.node[j]['demand']-v[j]*G.node[i]['demand'] for i in  Gc.nodes for j in  Gc.nodes )    
+        v[i]*G.nodes[j]['demand']-v[j]*G.nodes[i]['demand'] for i in  Gc.nodes for j in  Gc.nodes )
    
     VF_MIP.addConstrs(quicksum( x.select(i,'*','*') )==1 for i in range(1,NN))
-    VF_MIP.addConstrs(quicksum( x.select(i,'*',k) )  == quicksum(x.select('*',i,k) ) for i in Gc.node for k in range(M) )
+    VF_MIP.addConstrs(quicksum( x.select(i,'*',k) )  == quicksum(x.select('*',i,k) ) for i in Gc.nodes for k in range(M) )
     VF_MIP.addConstrs(quicksum(x.select(0,'*',k) )==1 for k in range(M) )
     VF_MIP.addConstrs(quicksum(x.select('*',NN+1,k) )==1  for k in range(M) )
-    VF_MIP.addConstrs(v[i]<=G.node[i]['demand'] for i in Gc.node  )
-    VF_MIP.addConstr(quicksum(v)<=G.node[0]['supply'])
+    VF_MIP.addConstrs(v[i]<=G.nodes[i]['demand'] for i in Gc.nodes  )
+    VF_MIP.addConstr(quicksum(v)<=G.nodes[0]['supply'])
     VF_MIP.addConstrs(quicksum(Dis[i,j]*x[i,j,k] for i,j in complement if j!=NN+1 ) <= Data.Maxtour for k in range(M))
     VF_MIP.addConstrs(quicksum(delta.select('*','*',k)) <= Q for k in range(M))
     VF_MIP.addConstrs(delta[i,j,k]<=v[j] for i,j,k in x.iterkeys() if j!=NN+1)
-    VF_MIP.addConstrs(delta[i,j,k]<=G.node[j]['demand']*x[i,j,k] for i,j,k in x.iterkeys() if j!=NN+1)
-    VF_MIP.addConstrs(delta[i,j,k]>=v[j]-G.node[j]['demand']*(1-x[i,j,k]) for i,j,k in x.iterkeys() if j!=NN+1)
-    
-    
-    
-    
-    
+    VF_MIP.addConstrs(delta[i,j,k]<=G.nodes[j]['demand']*x[i,j,k] for i,j,k in x.iterkeys() if j!=NN+1)
+    VF_MIP.addConstrs(delta[i,j,k]>=v[j]-G.nodes[j]['demand']*(1-x[i,j,k]) for i,j,k in x.iterkeys() if j!=NN+1)
+
     
     VF_MIP._vars = x
     VF_MIP.update()

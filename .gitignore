@@ -2,3 +2,5 @@
 *.log
 *.json
 *.xlsx
+.idea/
+Van/

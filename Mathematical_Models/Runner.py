@@ -1,25 +1,23 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Fri Nov 09 17:31:32 2018
-
-@author: generic
-    """
 from time import time
 from Real_Input import Real_Input
 from Model2 import Model2
 from Model1_V2 import Model1_V2
+from Model1 import Model1
 import math
-import numpy as np 
-#from BnP import branch_and_bound
-import cPickle as Pick
+import numpy as np
+import os
+import pickle as Pick
+
+
 def save_object(obj, filename):
     with open(filename, 'wb') as output:  # Overwrites any existing file.
         Pick.dump(obj, output, Pick.HIGHEST_PROTOCOL)
 
+
 def read_object(filename):
-    with open(filename, 'rb') as input:
-        obj= Pick.load(input)
-    return  obj
+    with open(filename, 'rb') as file:
+        obj = Pick.load(file, encoding='latin1')
+    return obj
 
 #NN=40 # number of nodes
 #M=8 # number of vehicles 
@@ -34,16 +32,18 @@ Case_name = "Van"
 #R_dic=read_object("TObj_R_Kartal" )
 NN=13
 ins_type= "T"
+CWD = os.getcwd()
 #for ins_type in ["T","VT"]:#[15,30]:#[60,30,15]:
 for NN in [15]:
     results={}
     M ={60: 9, 30: 5, 15: 3 }   # number of vehicles
     #M=3
-    for inst in range(5,6):
+    for inst in range(1,8):
         File_name= '%s_%d_%d_%d' %(Case_name,NN,M[NN],inst)
-        #File_name= '%s_%s_%d' %(Case_name,ins_type,inst)  
-        Data=read_object('G:\My Drive\\1-PhD thesis\\2 - equitable relief routing\Code\%s\%s' %(Case_name,File_name) ) 
-        #Data.Gamma=0.1        
+        #File_name= '%s_%s_%d' %(Case_name,ins_type,inst)
+        path2file = CWD.replace("Mathematical_Models","Data") + f"/{Case_name}/{File_name}"
+        Data = read_object(path2file)
+        #Data.Gamma=0.1
         
         if inst<=5:
             ins_type="T"
@@ -66,9 +66,9 @@ for NN in [15]:
             zeta1=1
             
         #Data.Maxtour= zeta1*math.ceil(float(NN)/M) * np.percentile(Data.distances.values(),50) 
-        Data.Maxtour= zeta1*math.ceil(float(NN)/M[NN]) * np.percentile(Data.distances.values(),50) 
+        Data.Maxtour= zeta1*math.ceil(float(NN)/M[NN]) * np.percentile(list(Data.distances.values()),50)
         #Data.Q= zeta2 * Data.G.node[0]['supply']/M # very tight capacity for instanc 6-10
-        Data.Q= zeta2 * Data.G.node[0]['supply']/M[NN]
+        Data.Q= zeta2 * Data.G.nodes[0]['supply']/M[NN]
         #Data.Total_dis_epsilon= 0.85* M*Data.Maxtour#0.85 * M*Data.Maxtour
         Data.Total_dis_epsilon= 0.85* M[NN]*Data.Maxtour
         
@@ -76,9 +76,9 @@ for NN in [15]:
         
         Data.Q= max ( math.ceil(Data.total_demand / float(Data.M) ) , max(dict(Data.Gc.nodes(data='demand')).values())  )
         start= time()
-        #best_obj ,LB ,Runtime ,GAP = Model1(Data,R)
+        best_obj ,LB ,Runtime ,GAP = Model1(Data,R)
         #best_obj ,LB ,Runtime ,GAP = Model2(Data,R)
-        best_obj ,LB ,Runtime ,GAP = Model1_V2(Data,R)
+        #best_obj ,LB ,Runtime ,GAP = Model1_V2(Data,R)
         #oldresult=read_object('G:\My Drive\\1-PhD thesis\equitable relief routing\Code\%s\%s_BnPresult' %(Case_name,File_name)  )
         
         results[File_name]=[best_obj ,LB ,Runtime ,GAP]
