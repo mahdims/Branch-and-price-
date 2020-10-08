@@ -48,7 +48,7 @@ def subtour(edges):
   for x,y in edges:
     selected[x].append(y)
   while True:
-    current = visited.keys()[visited.values().index(False)]
+    current = list(visited.keys())[list(visited.values()).index(False)]
     thiscycle = [current]
     while True:
       visited[current] = True

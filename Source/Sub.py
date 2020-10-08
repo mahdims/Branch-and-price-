@@ -50,7 +50,7 @@ def SubProblem(Data,G,dis,edges2keep=None, edges2avoid=None):
     Sub.addConstr( quicksum(x.select("*",NN+1)) == 1) 
     Sub.addConstrs(quicksum(x.select("*",i) ) == quicksum( x.select(i,"*") ) for i in Gc.nodes)
     Sub.addConstrs(quicksum(x.select(i,"*") ) == a[i] for i in G.nodes )
-    Sub.addConstrs(q[i] <= G.node[i]['demand']*a[i] for i in Gc.nodes )
+    Sub.addConstrs(q[i] <= G.nodes[i]['demand']*a[i] for i in Gc.nodes )
     Sub.addConstr( quicksum(q) <= Q )
     Sub.Params.OutputFlag=0     
     Sub.params.LazyConstraints = 1

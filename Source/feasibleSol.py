@@ -101,7 +101,7 @@ class Route:
                 temp_RDP[n]=Route.Class_RDP[n]
             self.RDP[1]=temp_RDP
         else:
-            deliveries=np.array(nx.get_node_attributes(Route.Data.G,'demand').values())*Route.Data.C
+            deliveries=np.array(list(nx.get_node_attributes(Route.Data.G,'demand').values()))*Route.Data.C
             deliveries=np.floor(deliveries)
             RDP=[0]*Route.Data.NN            
             CAP=0
@@ -287,7 +287,7 @@ def Near_me(NN,Ns,P1,length):
     inx={}
     for n in Ns:
         dis_from_N = [ Distance(i,n,length) for i in range(1,NN) ]
-        Sorted_inx = np.argpartition(dis_from_N, P1)+1
+        Sorted_inx = np.argpartition(dis_from_N, int(P1))+1
         inx[n] = Sorted_inx[:P1]
     
     return inx
@@ -382,27 +382,27 @@ def TabuRoute(Data,length,edges2keep,Pars,paths):
         if len(probablity)<Data.NN-1:
             sys.exit("Oppps line 386 feasibleSol")
         
-        selected_nodes = np.random.choice(range(1,Data.NN), size=q, p=probablity, replace=False)
+        selected_nodes = np.random.choice(range(1, Data.NN), size=int(q), p=probablity, replace=False)
         ## consider the edges 2 keep # move the connected node with edges2 keep 
         selected_nodes = Nodes_selecetion(selected_nodes,edges2keep)
         # Or use node2remove instead of randomly select the nodes
         ## Step 2 (Evaluationof all candidate moves)
         
-        Candidates={}
+        Candidates = {}
         for v in selected_nodes:
-            Near_nodes = Near_me(Data.NN,v,P1,length) # exclude node 0 
-            V_route_inx=CurrentSol.Find_the_route(v)
-            possible_routes_ind = possible_routes(Data, CurrentSol,v ,Near_nodes)
+            Near_nodes = Near_me(Data.NN, v, P1, length) # exclude node 0
+            V_route_inx = CurrentSol.Find_the_route(v)
+            possible_routes_ind = possible_routes(Data, CurrentSol, v, Near_nodes)
             
             for r_id in possible_routes_ind:
                 ## [r.route for r in P_Sol.routes]
                 ## [length[n,P_Sol.routes[0].route[i+1]] for i,n in enumerate(P_Sol.routes[0].route[:-1])]
-                P_Sol = CurrentSol.Inseration_cost(alpha,beta,v,V_route_inx,r_id,length)
+                P_Sol = CurrentSol.Inseration_cost(alpha, beta, v, V_route_inx, r_id, length)
 
-                if ( v[0] , r_id ) in tabu_list.keys(): #Check if the move is Tabu
+                if (v[0], r_id) in tabu_list.keys(): #Check if the move is Tabu
                 
                     if (1-P_Sol.feasible)*(P_Sol.score < BestSol.score) or (P_Sol.feasible)*(P_Sol.score < Best_F_Sol.score):
-                        Candidates[(v[0],V_route_inx,r_id)]=P_Sol
+                        Candidates[(v[0], V_route_inx, r_id)] = P_Sol
                 else:
                     if P_Sol.score < BestSol.score :
                         name=(v[0],V_route_inx,r_id)
@@ -414,7 +414,7 @@ def TabuRoute(Data,length,edges2keep,Pars,paths):
 
         # Step 3 Identification of best move
         if len(Candidates)!=0:
-            Best_New_Sol=min(Candidates.iteritems(), key= lambda x: x[1].score)
+            Best_New_Sol=min(Candidates.items(), key= lambda x: x[1].score)
 
             # Step 4 Next current solution
             if Best_New_Sol[1].score > CurrentSol.score and CurrentSol.feasible and USconter==0:
@@ -446,11 +446,13 @@ def TabuRoute(Data,length,edges2keep,Pars,paths):
         if Last_Best.score ==  BestSol.score and Last_F_Best.score ==  Best_F_Sol.score: 
             No_Change_cont += 1
         else:
-            No_Change_cont=0
+            No_Change_cont = 0
         # update the tabu list
-        for i in tabu_list.keys():
-            tabu_list[i]-=1
-            if tabu_list[i]==0: del tabu_list[i]
+        tabu_moves = list(tabu_list.keys())
+        for i in tabu_moves:
+            tabu_list[i] -= 1
+            if tabu_list[i] == 0:
+                del tabu_list[i]
         #print('Iteration %d : Best solution Obj = %s' %(it,Best_F_Sol.score))
         it += 1
     #print('Iteration %d : Best F solution Obj = %s But the best obj = %s' %(it,Best_F_Sol.score,BestSol.score))
@@ -499,8 +501,8 @@ def Initial_feasibleSol(Data2,G,edges2keep=None,edges2avoid=None,RDP=None):
             
         else:
             
-            N_of_Node2Change = Data.NN/5
-            N_of_near_node = Data.NN/3
+            N_of_Node2Change = int(Data.NN/5)
+            N_of_near_node = int(Data.NN/3)
             pars = (N_of_Node2Change , N_of_near_node ,None,2,6,0.1,3,20)
             paths,feasible=TabuRoute(Data,length,edges2keep,pars,paths)
             if feasible:

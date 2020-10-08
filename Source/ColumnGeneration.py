@@ -1,6 +1,7 @@
 import itertools as it
 import networkx as nx
 import numpy as np
+import sys
 from feasibleSol import Route
 from itertools import *
 from gurobipy import *
@@ -84,7 +85,7 @@ def get_Duals(NN, RMP, edges2keep):
 
 def Calculate_the_subproblem_obj(Data, R, Duals, col, q):
     gamma = Data.Gamma
-    d = np.array(nx.get_node_attributes(Data.G, 'demand').values()[1:-1])
+    d = np.array(list(nx.get_node_attributes(Data.G, 'demand').values())[1:-1])
     Pi1 = np.array(Duals[1])
     Pi2 = np.array(Duals[2])
     Pi3 = np.array(Duals[3])
@@ -124,14 +125,14 @@ def Columns_with_negitive_costs(Data, R, Duals, Col_dic):
     return indicator, Col_dic, All_new_cols_IDs
 
 
-def Set_sub_obj(Data, R, Gc, dis, Duals, edges2keep, (Sub, x, q, a)):
+def Set_sub_obj(Data, R, Gc, dis, Duals, edges2keep, Sub, x, q, a):
     NN=len(a)-1
     (AllDual, linear, totaltime, visit, vehicle, Inv, E_keep) = Duals
     Gc=G.subgraph(range(1,NN))
     #complement= [i for i in permutations(Gc.nodes,2)] + [(0,i) for i in Gc.nodes] +[(i,NN+1) for i in Gc.nodes]
     
     if edges2keep:
-        Sub.setObjective(-quicksum((q[i]*Gc.node[j]['demand']-q[j]*Gc.node[i]['demand'])*linear[i-1,j-1] for i in Gc.nodes for j in Gc.nodes)   
+        Sub.setObjective(-quicksum((q[i]*Gc.nodes[j]['demand']-q[j]*Gc.nodes[i]['demand'])*linear[i-1,j-1] for i in Gc.nodes for j in Gc.nodes)
         - quicksum(a[i]*visit[i-1] for i in Gc.nodes)
         - quicksum(q)*(Inv+1)-vehicle
         - quicksum(x[i,j]*dis[(i,j)] for (i,j) in x.keys() if j!=NN+1) *(totaltime + Data.Gamma/R)
@@ -139,7 +140,7 @@ def Set_sub_obj(Data, R, Gc, dis, Duals, edges2keep, (Sub, x, q, a)):
         - quicksum( (x[i,j])*val for (i,j),val in E_keep.items() )
         , GRB.MINIMIZE)
     else:
-        Sub.setObjective(-quicksum((q[i]*Gc.node[j]['demand']-q[j]*Gc.node[i]['demand'])*linear[i-1,j-1] for i in Gc.nodes for j in Gc.nodes)   
+        Sub.setObjective(-quicksum((q[i]*Gc.nodes[j]['demand']-q[j]*Gc.nodes[i]['demand'])*linear[i-1,j-1] for i in Gc.nodes for j in Gc.nodes)
                     - quicksum(x[i,j]*dis[(i,j)] for (i,j) in x.keys() if j!=NN+1) *(totaltime + Data.Gamma/R)                   
                     - quicksum(a[i]*visit[i-1] for i in Gc.nodes)
                     - quicksum(q)*(Inv+1)-vehicle
@@ -179,7 +180,7 @@ def Update_Master_problem(Gc, R, edges2keep, RMP, Col_dic, Col_ID,RDP_ID):
         for i, j in it.permutations(Gc.nodes(), 2):
             #### Master problem linear constraint update ##
             cons = RMP.getConstrByName("linear[%d,%d]" % (i, j))
-            col.addTerms(- New_Route.RDP[RDP_ID][j] * Gc.node[i]['demand'] + New_Route.RDP[RDP_ID][i] * Gc.node[j]['demand'], cons)
+            col.addTerms(- New_Route.RDP[RDP_ID][j] * Gc.nodes[i]['demand'] + New_Route.RDP[RDP_ID][i] * Gc.nodes[j]['demand'], cons)
 
         for n in New_Route.route[1:-1]:
             consvisit = RMP.getConstrByName("visit[%d]" % n)
@@ -224,7 +225,8 @@ def Get_the_Y_variables(RMP):
 
     return Y
 
-def ColumnGen(Data, R, RMP, G_in, Col_dic, dis, edges2keep, edges2avoid, (Sub,x,q,a)):
+def ColumnGen(Data, R, RMP, G_in, Col_dic, dis, edges2keep, edges2avoid, SubModel):
+    (Sub, x, q, a) = SubModel
     Stoping_R_cost = -0.001
     heuristic_path_value = -10
     global G ,Gamma
@@ -274,7 +276,7 @@ def ColumnGen(Data, R, RMP, G_in, Col_dic, dis, edges2keep, edges2avoid, (Sub,x,
                 # Heuristic_works = 0 # remove this later after your experiment
             if not Heuristic_works:  # Solve it with mathematical model
                 ### Set the sub problem  objective
-                Sub = Set_sub_obj(Data, R, Gc, dis, Duals, edges2keep, (Sub, x, q, a))
+                Sub = Set_sub_obj(Data, R, Gc, dis, Duals, edges2keep, Sub, x, q, a)
                 Sub.optimize(subtourelim)
                 Subobj = Sub.objVal
                 if Sub.status != 2: sys.exit("infeasible sub problem by model")

@@ -54,25 +54,25 @@ def Master_int(Data,R,CutOff,Col_dic):
     
     IMP.update()
     
-    IMP.setObjective( quicksum( Gc.node[i]['demand'] -  q[i] for i in Gc.nodes)
+    IMP.setObjective( quicksum( Gc.nodes[i]['demand'] -  q[i] for i in Gc.nodes)
                     + (Lambda/TotalD) * quicksum( tp[i,j]+tn[i,j] for i,j in tp.keys())  
                     + (Gamma/R) * (Data.Total_dis_epsilon-quicksum(Col_dic[r].travel_time*y[r] for r in Col_dic.keys() ) )  )
     
-    IMP.addConstrs(Qr[i,r] <= q[i] for i in G.node for r in Col_dic.keys() if i in Col_dic[r].route)
-    IMP.addConstrs(Qr[i,r] <= G.node[i]['demand']*y[r] for i in G.node for r in Col_dic.keys() if i in Col_dic[r].route)
-    IMP.addConstrs(Qr[i,r] >= q[i]-G.node[i]['demand']*(1-y[r]) for i in G.node for r in Col_dic.keys() if i in Col_dic[r].route)
+    IMP.addConstrs(Qr[i,r] <= q[i] for i in G.nodes for r in Col_dic.keys() if i in Col_dic[r].route)
+    IMP.addConstrs(Qr[i,r] <= G.nodes[i]['demand']*y[r] for i in G.nodes for r in Col_dic.keys() if i in Col_dic[r].route)
+    IMP.addConstrs(Qr[i,r] >= q[i]-G.nodes[i]['demand']*(1-y[r]) for i in G.nodes for r in Col_dic.keys() if i in Col_dic[r].route)
     
     linear = IMP.addConstrs((tp[i,j]-tn[i,j]+
-        quicksum(Qr[i,r]*G.node[j]['demand'] for r in Col_dic.keys() if i in Col_dic[r].route  )  
-        - quicksum(Qr[j,r]*G.node[i]['demand'] for r in Col_dic.keys() if j in Col_dic[r].route )
+        quicksum(Qr[i,r]*G.nodes[j]['demand'] for r in Col_dic.keys() if i in Col_dic[r].route  )
+        - quicksum(Qr[j,r]*G.nodes[i]['demand'] for r in Col_dic.keys() if j in Col_dic[r].route )
                 ==0 for i in  Gc.nodes for j in  Gc.nodes) , name="linear")
     
     TotalTime=IMP.addConstr( quicksum( y[r]*Col_dic[r].travel_time for r in Col_dic.keys() ) <= Data.Total_dis_epsilon, name="Total_time" )
     visit = IMP.addConstrs((quicksum((i in Col_dic[r].route )*y[r] for r in Col_dic.keys() )==1 for i in Gc.nodes ), name="visit" )
     vehicle = IMP.addConstr(quicksum(y[r] for r in Col_dic.keys() ) <=  M, name="vehicle") 
-    Inv = IMP.addConstr(quicksum(q[i] for i in  Gc.nodes ) <= G.node[0]['supply'], name="Inv" )
+    Inv = IMP.addConstr(quicksum(q[i] for i in  Gc.nodes ) <= G.nodes[0]['supply'], name="Inv" )
     IMP.addConstrs(quicksum(Qr[i,r] for i in  Gc.nodes if i in Col_dic[r].route )<=Q for r in Col_dic.keys())
-    IMP.addConstrs( q[i]<=G.node[i]['demand'] for i in  Gc.nodes )
+    IMP.addConstrs( q[i]<=G.nodes[i]['demand'] for i in  Gc.nodes )
     
     #IMP.write("MasterInt.lp")
     IMP.Params.LogToConsole=0

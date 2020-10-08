@@ -1,8 +1,6 @@
 import numpy as np
-import collections as col
 from Real_Input import Real_Input
-import cPickle as Pick
-import math
+import pickle as Pick
 import copy
 import networkx as nx
 import itertools as it
@@ -36,7 +34,7 @@ def Make_it_compatible(edges2keep, edges2avoid):
 
 
 def Node_value_calc(Data, Dual):
-    d = np.array(nx.get_node_attributes(Data.G, 'demand').values()[1:-1])
+    d = np.array(list(nx.get_node_attributes(Data.G, 'demand').values())[1:-1])
     Pi1 = np.array(Dual[1])
     Pi5 = np.array(Dual[5])
 
@@ -165,7 +163,7 @@ class Path:
 
     def Calculating_path_value(self):
         gamma = Path.Data.Gamma
-        d = np.array(nx.get_node_attributes(Path.Data.G, 'demand').values()[1:-1])
+        d = np.array(list(nx.get_node_attributes(Path.Data.G, 'demand').values())[1:-1])
         Pi1 = np.array(Path.Duals[1])
         Pi2 = np.array(Path.Duals[2])
         Pi3 = np.array(Path.Duals[3])
@@ -206,7 +204,7 @@ class Path:
         current_value = self.value
         Candidate_dic = {}
         # create the candidate set for insertion
-        CL = range(len(self.path) - 1)
+        CL = list(range(len(self.path) - 1))
         # eliminate the avoid nodes from candidate set
         if v.string[0] in Path.edges2avoid.keys():
             for avoid in Path.edges2avoid[v.string[0]]:
@@ -265,7 +263,7 @@ class Path:
     def Changes_in_value(self, i, inward, outward=None):
 
         gamma = Path.Data.Gamma
-        d = np.array(nx.get_node_attributes(Path.Data.G, 'demand').values()[1:-1])
+        d = np.array(list(nx.get_node_attributes(Path.Data.G, 'demand').values())[1:-1])
         Pi1 = np.array(Path.Duals[1])
         Pi2 = np.array(Path.Duals[2])
         Pi3 = np.array(Path.Duals[3])
@@ -323,7 +321,7 @@ class Path:
 
         return Total_value, NewQ
 
-    def exchange(self, (i, outward, inward)):
+    def exchange(self, i, outward, inward):
 
         # the function will operate the exchange move, u
         # and update the N_of_nodes, path_time, keep_list, (avoid_list not included yet )
@@ -507,7 +505,7 @@ def exchange_operator(Data, current_path):
             selected_move = min(Moves_profile.keys(), key=lambda x: Moves_profile[x])
             move_value = Moves_profile[selected_move]
             if move_value < Current_value:
-                current_path.exchange(selected_move)
+                current_path.exchange(*selected_move)
                 improvement = 1
             elif 0:
                 possible_options = [a for a in Moves_profile.items() if a[1][0] == 0]

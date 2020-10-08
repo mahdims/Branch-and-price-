@@ -2,7 +2,7 @@
 from Node import Node
 from feasibleSol import Initial_feasibleSol 
 from Real_Input import Real_Input
-import cPickle as Pick
+import pickle as Pick
 import time
 import itertools as it
 import  numpy as np
@@ -36,13 +36,13 @@ def calculate_the_obj(Data, R, Routes,RDPs):
     part1 =0
     for i in Gc.nodes :
         (r_ID, inx) = Q_mapping[i]
-        part1 += Gc.node[i]['demand'] - RDPs[r_ID][inx]
+        part1 += Gc.nodes[i]['demand'] - RDPs[r_ID][inx]
 
     part2  = 0
     for i,j in it.product(Gc.nodes, Gc.nodes):
         (r_IDi, inxi) = Q_mapping[i]
         (r_IDj, inxj) = Q_mapping[j]
-        part2 += abs(Gc.node[j]['demand']*RDPs[r_IDi][inxi] - Gc.node[i]['demand']*RDPs[r_IDj][inxj])
+        part2 += abs(Gc.nodes[j]['demand']*RDPs[r_IDi][inxi] - Gc.nodes[i]['demand']*RDPs[r_IDj][inxj])
 
     part2 = (Data.Lambda / Data.total_demand) * part2
     part3 = Data.Gamma * (Data.Total_dis_epsilon - sum([r.travel_time for r in Routes])) / R

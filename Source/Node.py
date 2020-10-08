@@ -138,7 +138,7 @@ class Node():
 
         # there is no edge edge to branch
         edgeset = list(self.G.edges())
-        for n in self.G.node:
+        for n in self.G.nodes:
             if n!=0 and n!= Node.Data.NN+1 :           
                 edgeset.remove((n , Node.Data.NN+1))
         #print("Number of existed edges: %s" %(len(edgeset)-Node.Data.NN+1))
