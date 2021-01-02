@@ -71,19 +71,22 @@ class Node():
     
     def __init__(self, ID,PID ,level, pos ,Col_dic,G,edge2keep= [] ,edge2avoid= [] ,Initial_RDP=None):
         
-        self.level=level
-        self.ID=ID
+        self.level = level
+        self.ID = ID
         self.Parent_ID = PID
-        self.pos=pos
+        self.pos = pos
         self.Col_dic = Col_dic
         self.G = G
-        self.edges2keep=edge2keep
-        self.edge2avoid=edge2avoid
+        self.edges2keep = edge2keep
+        self.edge2avoid = edge2avoid
         self.Objval = None
         self.selected_R_D = []
         self.selected_route = []
         self.feasible = self.check_G_feasibility()
-        self.Dis=Node.Data.distances        
+        self.Dis = Node.Data.distances
+
+        self.Col_runtime = 0
+
         # solve the node - proccessing 
         if self.feasible :
             self.Col_dic_update(Initial_RDP) # will add feasible solutions to the Col Dic by initial heuristic
@@ -103,30 +106,31 @@ class Node():
         Node.Tree.add_node(self.ID)
         Node.Tree.add_edge(  self.Parent_ID , self.ID  )
 
+    def __repr__(self):
+        return f"Node {self.ID}: objective: {round(self.Objval,2)}"
+
     def Upper_bound_finder(self):
         self.Int_Objval, self.Int_route, self.Int_RDP = Master_int(Node.Data, Node.R, Node.best_obj, self.Col_dic)
 
-
-        # replace the new routes with
-
     def check_G_feasibility(self):
-        # This function performs three feasiblity test on the graph
+        # This function performs some feasibility test on the graph
 
-        # if the graph is still conected 
-        subturs=[c for c in sorted(nx.connected_components(self.G), key=len, reverse=True)]
-        if len(subturs)!=1:
-            return 0 # Graph became disconnected 
+        # if the graph is still connected
+        subturs = [c for c in sorted(nx.connected_components(self.G), key=len, reverse=True)]
+        if len(subturs) != 1:
+            # Graph became disconnected
+            return 0
 
-        # more then two must visited edges are connected to one node
-        G2=nx.Graph()
+        # more then two must-visited-edges are connected to one node
+        G2 = nx.Graph()
         G2.add_nodes_from(self.G.nodes())
         G2.add_edges_from(self.edges2keep)
         
         for i in G2.nodes():
-            if G2.degree(i)>=3:
+            if G2.degree(i) >= 3:
                 return 0
 
-        # the degree of depot node shouldn't larger than number of vehicles
+        # the degree of depot node shouldn't be larger than number of vehicles
         if G2.degree(0) > Node.Data.M:
             return 0
 
@@ -139,35 +143,37 @@ class Node():
         # there is no edge edge to branch
         edgeset = list(self.G.edges())
         for n in self.G.nodes:
-            if n!=0 and n!= Node.Data.NN+1 :           
-                edgeset.remove((n , Node.Data.NN+1))
+            if n != 0 and n != Node.Data.NN+1 :
+                edgeset.remove((n, Node.Data.NN+1))
         #print("Number of existed edges: %s" %(len(edgeset)-Node.Data.NN+1))
-        if edgeset == []:
+
+        if not edgeset:
             return 0
+
         return 1
-        
-    
+
     def Update_shortest_dis(self):
         # change the dis matrix to avoid deleted edges in initial heuristic
         # This is needed for left nodes and the nodes under them
         # We use bellman ford algorithm to find al pair shorets beased on new Graph
-        #Dis=nx.all_pairs_bellman_ford_path_length(self.G  ,  weight='Travel_time')
+        # Dis=nx.all_pairs_bellman_ford_path_length(self.G,  weight='Travel_time')
         
         paths = dict(nx.all_pairs_bellman_ford_path(self.G))
-        for i,j in it.combinations(self.G.node,2):
-            path=paths[i][j]
-            travel_dis=0
-            pernode=path.pop(0)
+        for i, j in it.combinations(self.G.node, 2):
+            path = paths[i][j]
+            travel_dis = 0
+            pernode = path.pop(0)
             while len(path):
                 Cnode = path.pop(0)
-                travel_dis += self.G.edges[pernode,Cnode]["Travel_distance"]
+                travel_dis += self.G.edges[pernode, Cnode]["Travel_distance"]
                 pernode = Cnode
-            self.Dis[i,j] = travel_dis
-            self.Dis[j,i] = travel_dis
+            self.Dis[i, j] = travel_dis
+            self.Dis[j, i] = travel_dis
 
-    def Col_dic_update(self,RDP):
+    def Col_dic_update(self, RDP):
         # This function Generates some new R_D according to new dis (edges to avoid)
-        New_Col, self.feasible = Initial_feasibleSol(Node.Data,self.G,edges2keep=self.edges2keep,edges2avoid=self.edge2avoid,RDP=RDP)
+        New_Col, self.feasible = Initial_feasibleSol(Node.Data, self.G, edges2keep=self.edges2keep,
+                                                     edges2avoid=self.edge2avoid, RDP=RDP)
         if not self.feasible:
             print("Initial heuristic say Infeasible")
         # Add the newly generated columns to the Col_dic
@@ -182,56 +188,55 @@ class Node():
         del New_Col
 
     def solve(self):
-        # solve a node (integer relaxtion) by column generation 
+        # This function solves a node (integer relaxtion) by column generation
         # Build the master problem 
-        RMP = MasterModel(Node.Data,self.Col_dic , Node.R ,self.edges2keep)
-        
+        RMP = MasterModel(Node.Data, self.Col_dic, Node.R, self.edges2keep)
         # Build the sub-problem only the constraints and variables 
-        Sub , x , q , a = SubProblem( Node.Data , self.G , self.Dis ,self.edges2keep ,  self.edge2avoid )
+        Sub, x, q, a = SubProblem(Node.Data, self.G, self.Dis, self.edges2keep, self.edge2avoid)
+        sub = (Sub, x, q, a)
 
-        sub=(Sub ,x , q , a)
+        # Start the Column Generation
+        start = time()
+        (self.feasible, self.Objval, self.Y, self.Col_dic) = ColumnGen(Node.Data, Node.R, RMP, self.G, self.Col_dic,
+                                                                       self.Dis, self.edges2keep, self.edge2avoid, sub)
+        self.Col_runtime = time()-start
 
-        ######### run the Column genearation ########
-        start=time()
-        (self.feasible, self.Objval, self.Y, self.Col_dic) = ColumnGen(Node.Data,Node.R,RMP,self.G,self.Col_dic,self.Dis,self.edges2keep, self.edge2avoid,sub)
-        self.Col_runtime=time()-start
-
-        if self.feasible: # find the used route-deliveries
+        if self.feasible:
             self.selected_R_D = [a for a in self.Y.keys() if self.Y[a] != 0]
             #self.selected_route = [self.Col_dic[i].route  for i,j in self.selected_R_D]
             #self.Rounding()
             #self.Round_RDP= np.sum([np.array(self.Col_dic[k].RDP)*self.Y[k] for k in self.Col_dic.keys()],axis=0)
             #self.Round_RDP =np.array([round(a,4) for a in self.Round_RDP] )
 
-    def Strong_Branching(self) :
+    def Strong_Branching(self):
         # Find the branching rule
-        Edge_Val={}
+        Edge_Val = {}
         # calculate the xij values ***** Not for   i--NN+1 ******
         
         for edge in self.G.edges():
             if Node.Data.NN+1 not in edge: #Do not branch on i-NN+1 edges
-                Edge_Val[edge]= abs( sum([ edge_in_route(edge , self.Col_dic[Col_ID].route)* self.Y[Col_ID,RDP_ID] for Col_ID,RDP_ID in self.selected_R_D ]) - 0.5)
+                Edge_Val[edge] = abs(sum([edge_in_route(edge, self.Col_dic[Col_ID].route) * self.Y[Col_ID, RDP_ID]
+                                          for Col_ID, RDP_ID in self.selected_R_D]) - 0.5)
 
         # find the one with\ the minimum 
         
-        while 1 :
-            selected_edge= min(Edge_Val , key=Edge_Val.get)
+        while 1:
+            selected_edge = min(Edge_Val, key=Edge_Val.get)
             if selected_edge in self.edge2avoid + self.edges2keep:
                 del Edge_Val[selected_edge]
             else:
                 break
 
         counter = 0
-        for key,val in Edge_Val.items():
-            if val <=  1.1 * Edge_Val[selected_edge]:
+        for key, val in Edge_Val.items():
+            if val <= 1.1 * Edge_Val[selected_edge]:
                 counter += 1
         print("I select the branching edges among %d alternative randomly!!" %counter)
 
-
-        L_Node = self.Arc_Branching("left",*selected_edge)
-        R_Node = self.Arc_Branching("right",*selected_edge)
+        L_Node = self.Arc_Branching("left", *selected_edge)
+        R_Node = self.Arc_Branching("right", *selected_edge)
         
-        return [L_Node, R_Node ]
+        return [L_Node, R_Node]
         
         
         

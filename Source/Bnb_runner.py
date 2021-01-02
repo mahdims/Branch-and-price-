@@ -1,5 +1,3 @@
-
-
 import pickle as Pick
 import time
 from BnP import branch_and_bound
