@@ -5,17 +5,42 @@ from Real_Input import Real_Input
 import pickle as Pick
 import time
 import itertools as it
-import  numpy as np
+import numpy as np
+
+
+def print_routes(node):
+
+    if node:
+        selected = [key for key, val in node.Y.items() if val > 0.9]
+
+        for r,d in selected:
+            print("\n")
+            print(node.Col_dic[r].route)
+            print(node.Col_dic[r].RDP[d])
+            if node.Int_route:
+                if node.Col_dic[r] not in node.Int_route:
+                    print("This is not the int route")
+
+    else:
+        for ID, route in enumerate(Node.best_Route):
+            print("\n")
+            print(route.route)
+            print(Node.best_RDP[ID])
+
+
+    return
 
 def read_object(filename):
     with open(filename, 'rb') as input:
         obj = Pick.load(input)
     return obj
-    
+
+
 def save_object(obj, filename):
     with open(filename, 'wb') as output:  # Overwrites any existing file.
         Pick.dump(obj, output, Pick.HIGHEST_PROTOCOL)
-        
+
+
 def calculate_the_obj(Data, R, Routes,RDPs):
     Gc = Data.Gc
     # create the mapping to find the node quantities  :))
@@ -55,14 +80,14 @@ def branch_and_bound(Data, R, MaxTime):
     start = time.time()
     Node.Data = Data
     Node.R = R
-    # set initial parameters
+    # Set initial Parameters
     Node.best_obj = 100000000000000000 # upper bound 
     Node.best_objtime = 0
     Gap = 100
     Elapsed_time = 0
-    # initiate the algorithm
-    Col_set, _ = Initial_feasibleSol(Data, Data.G) #find the intial columns
-    Col_dic = {} # convert them to a dic
+    # Find the initial Columns
+    Col_set, _ = Initial_feasibleSol(Data, Data.G)
+    Col_dic = {}
     for inx, R_D in enumerate(Col_set):
             Col_dic[inx] = R_D  
     # make the root node
@@ -80,17 +105,31 @@ def branch_and_bound(Data, R, MaxTime):
 
     ############# MAin loop #################
     while stack and Gap > 0.01 and Elapsed_time < MaxTime:
+        print(f"Open nodes : {len(stack)}")
         node = min(stack, key=lambda i: i.Objval) # select the node with best objval
+
+
+        Elapsed_time = round(time.time()-start,3)
+        print("ID // Current objval // integer Objval // UB    // LB     // GAP // Elapsed T")
+        print("%d     %s        %s          %s    %s   %s   %s"
+            %(node.ID, round(node.Objval, 2), round(node.Int_Objval, 2), round(Node.best_obj, 2),
+              round(Node.LowerBound, 2), Gap, Elapsed_time))
+
+        print(sorted(stack, key=lambda x: x.Objval)[:4])
+
         stack.remove(node)
 
         if not node.feasible: # Fanthom by infeasibility
+            print(f"Closed due to infeasiblity : Node {node.ID}")
             node.delete()
             continue
         # lower bound is the minmum obj among the un explored ones
         Node.LowerBound = node.Objval
 
 
+
         if node.Objval >= Node.best_obj: #Fanthom by bound
+            print(f"Closed due to bound : Node {node.ID}")
             node.delete()
             continue
 
@@ -99,6 +138,8 @@ def branch_and_bound(Data, R, MaxTime):
                 Node.best_obj = node.Objval
                 Node.best_objtime = round(time.time()-start, 3)
                 Node.best_node = node
+
+            print(f"Closed due to integrity : Node {node.ID}")
             node.delete()
             continue
         if node.Int_Objval < Node.best_obj:
@@ -117,54 +158,16 @@ def branch_and_bound(Data, R, MaxTime):
         else:
             Gap = None
 
-        Elapsed_time = round(time.time()-start,3)
-        print("ID // Current objval // integer Objval // UB    // LB     // GAP // Elapsed T")
-        print("%d     %s        %s          %s    %s   %s   %s"
-            %(node.ID, round(node.Objval, 2), round(node.Int_Objval, 2), round(Node.best_obj, 2),
-              round(Node.LowerBound, 2), Gap, Elapsed_time))
 
         # for test to see if we calculate the objective currectly!
         Direct_Obj = calculate_the_obj(Data, R, Node.best_Route, Node.best_RDP)
-        print(Direct_Obj)
+        # print(Direct_Obj)
 
-        if Direct_Obj < 58800:
-            hh = 0
         node.delete()
 
-    return (Node.best_node, Node.best_obj ,Node.LowerBound ,Node.best_objtime ,Elapsed_time ,Gap)
+    Gap = round((Node.best_obj - Node.LowerBound) * 100 / Node.best_obj, 3)
+    print("Best sol    // LB  // time_2_best // Elapsed time // GAP")
+    print(f"{round(Node.best_obj, 3)} //  {round(Node.LowerBound, 3)} //  {round(Node.best_objtime, 3)} // {Elapsed_time} // {Gap}")
 
-''' 
-#NN=40 # number of nodes
-#M=8 # number of vehicles 
-#Q=50 # vehicles Capacity
-#C=0.75 # percentage of demand as Initial inventory in depot
-#Lambda=0.5 # Gini weight in obj 
-#Gamma=0.1 # weight of total travel time function in obj
-#Data=Input(NN,M,Q,C,Lambda,Gamma)
-#save_object( Data , 'Data.pkl_%d_%d_%d' %(NN,M,Q) )
-#Data=read_object('Kartal_3_100_%d' %(NN,M,Q)) # read Data stored in directory 
-#Data=read_object('G:\My Drive\\1-PhD thesis\equitable relief routing\Code\Kartal\Kartal_3_100_0') 
-Data=read_object('G:\My Drive\\1-PhD thesis\equitable relief routing\Code\Van\Van_15_3_1') 
-#Data.Gamma=0
-Data.Q=3000
-#Data.Maxtour=300
-
-start= time.time()
-Bsolution = branch_and_bound(Data)
-RunTime_BnB = time.time()-start
-if Bsolution:
-    print(Bsolution.Objval , RunTime_BnB)
-    for i in Bsolution.selected_R_D:
-        r= Bsolution.Col_dic[i]
-        print(r.route)
-        print(r.RDP)
-        print("Total delivery in this tour: %s" %sum(r.RDP))
-        print("The Tour length is : %s \n" %round(r.travel_time,1) )
-else:
-    for j,r in  enumerate(Node.best_Route):
-        print(r)
-        print(Node.best_RDP[j])
-        print("Total delivery in this tour: %s" %sum(Node.best_RDP[j]))
-        #print("The Tour length is : %s \n" %round(r.travel_time,1) )
-    print ("Optimal solution: %s" %Node.best_obj)
-'''
+    print_routes(Node.best_node)
+    return Node.best_node, Node.best_obj, Node.LowerBound, Node.best_objtime, Elapsed_time, Gap

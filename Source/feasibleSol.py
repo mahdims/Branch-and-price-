@@ -513,7 +513,7 @@ def Initial_feasibleSol(Data2,G,edges2keep=None,edges2avoid=None,RDP=None):
                 inf_count+=1
             
         if inf_count>=4:
-            RDP=np.array([0]+[1 for n in Data.G.nodes.values()[1:-1]] )
+            RDP=np.array([0]+[1 for n in list(Data.G.nodes.values())[1:-1]] )
             Route.Class_RDP=0.6*RDP
             #pos = nx.spring_layout(G)
             #plt.title("Infeasible Graph")

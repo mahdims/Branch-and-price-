@@ -59,23 +59,24 @@ def Model2(Data,R):
     w=CF_MIP.addVars(complement,name="w")
     u=CF_MIP.addVars(G.nodes,name="u")
     v=CF_MIP.addVars(range(NN),name="v")#,vtype=GRB.INTEGER)
-    #tp=CF_MIP.addVars(Gc.nodes,Gc.nodes,lb=0 , name="tp")   
-    #tn=CF_MIP.addVars(Gc.nodes,Gc.nodes,lb=0 , name="tn") 
+    tp=CF_MIP.addVars(Gc.nodes,Gc.nodes,lb=0 , name="tp")
+    tn=CF_MIP.addVars(Gc.nodes,Gc.nodes,lb=0 , name="tn")
     
     #s=CF_MIP.addVars(Gc.nodes,lb=0,obj=1,name="s")
     
     CF_MIP.update()
-    CF_MIP.setObjective( quicksum(Dis[i,j]*x[i,j] for i,j in x.keys() if j!=NN+1) )
-    #CF_MIP.setObjective(quicksum(G.node[i]['demand'] -v[i] for i in  Gc.nodes)
-    #                    + (Lambda/TotalD) * quicksum(tp[i,j] + tn[i,j] for i,j in tp.keys()) 
-     #                   + (Data.Gamma/R) * (Data.Total_dis_epsilon-quicksum(Dis[i,j]*x[i,j] for i,j in x.keys() if j!=NN+1) )       )
-    #CF_MIP.addConstrs(tp[i,j]-tn[i,j] ==
-    #    v[j]*G.node[i]['demand']-v[i]*G.node[j]['demand'] for i in  Gc.nodes for j in  Gc.nodes )
+    #CF_MIP.setObjective( quicksum(Dis[i,j]*x[i,j] for i,j in x.keys() if j!=NN+1) )
+    CF_MIP.setObjective(quicksum(G.nodes[i]['demand'] -v[i] for i in  Gc.nodes)
+                        + (Lambda/TotalD) * quicksum(tp[i,j] + tn[i,j] for i,j in tp.keys())
+                        + (Data.Gamma/R) * (Data.Total_dis_epsilon-quicksum(Dis[i,j]*x[i,j] for i,j in x.keys() if j!=NN+1) )       )
+    CF_MIP.addConstrs(tp[i,j]-tn[i,j] ==
+        v[j]*G.nodes[i]['demand']-v[i]*G.nodes[j]['demand'] for i in  Gc.nodes for j in  Gc.nodes )
     
-    #CF_MIP.addConstr(quicksum(Dis[i,j]*x[i,j] for i,j in complement if j!=NN+1 ) <= Data.Total_dis_epsilon )    
+    CF_MIP.addConstr(quicksum(Dis[i,j]*x[i,j] for i,j in complement if j!=NN+1 ) <= Data.Total_dis_epsilon )
     
     
-    CF_MIP.addConstrs(quicksum( w[i,j]-y[i,j] for j in G.nodes() if j !=i and j!=0 ) + quicksum( y[j,i]-w[j,i] for j in G.nodes() if j !=i and j!=NN+1) == 2*v[i] for i in Gc.node )
+    CF_MIP.addConstrs(quicksum( w[i,j]-y[i,j] for j in G.nodes() if j !=i and j!=0 ) +
+                      quicksum( y[j,i]-w[j,i] for j in G.nodes() if j !=i and j!=NN+1) == 2*v[i] for i in Gc.nodes )
     
     CF_MIP.addConstr(quicksum(y.select(0,'*'))==quicksum(v)  )
     CF_MIP.addConstr(quicksum(w.select(0,'*'))==M*Q-quicksum(v)  )
@@ -86,12 +87,13 @@ def Model2(Data,R):
     CF_MIP.addConstrs(u[j]>=u[i]+Dis[i,j]+BigM*(x[i,j]-1) for i,j in complement)
     CF_MIP.addConstrs(u[i]<=Data.Maxtour for i in Gc.nodes )
     
-    CF_MIP.addConstrs(v[i]==G.node[i]['demand'] for i in Gc.nodes )
+    CF_MIP.addConstrs(v[i]==G.nodes[i]['demand'] for i in Gc.nodes )
 
     #CF_MIP.addConstr(quicksum(v) <= G.node[0]['supply'] )
 
-    CF_MIP.addConstrs(quicksum(x[i,k] for i in G.node if i!=k and i!=NN+1) == quicksum(x[k,i] for i in G.node if i!=k and i!=0) for k in Gc.node)
-    CF_MIP.addConstrs(quicksum(x.select(i,'*') )==1    for i in Gc.node)
+    CF_MIP.addConstrs(quicksum(x[i,k] for i in G.nodes if i!=k and i!=NN+1) ==
+                      quicksum(x[k,i] for i in G.nodes if i!=k and i!=0) for k in Gc.nodes)
+    CF_MIP.addConstrs(quicksum(x.select(i,'*') )==1    for i in Gc.nodes)
    
     
     CF_MIP.update()

@@ -79,21 +79,22 @@ def Get_the_Subtours(edges):
         return list(subtours[subtours.index(min( subtours , key=lambda x :len(x) ) ) ] )
     else:
         return []
-    
+
+
 def Model1(Data,R):
+
     global Gc,G,NN ,complement ,M
-    Gc=Data.Gc    
-    NN=Data.NN
-    M=Data.M 
-    Q=Data.Q
-    #Q=10
-    G=Data.G
-    Gc=Data.Gc
-    Lambda=Data.Lambda
-    Gamma=Data.Gamma
+    Gc = Data.Gc
+    NN = Data.NN
+    M = Data.M
+    Q = Data.Q
+    G = Data.G
+    Gc = Data.Gc
+    Lambda = Data.Lambda
+    Gamma = Data.Gamma
     
-    complement=[i for i in permutations(Gc.nodes,2)] + [(0,i) for i in Gc.nodes] +[(i,NN+1) for i in Gc.nodes]
-    Dis=Data.distances
+    complement = [i for i in permutations(Gc.nodes, 2)] + [(0, i) for i in Gc.nodes] + [(i, NN+1) for i in Gc.nodes]
+    Dis = Data.distances
     ''' 
     Dis={}
     paths = dict(nx.all_pairs_bellman_ford_path(G))
@@ -109,77 +110,70 @@ def Model1(Data,R):
         Dis[j,i] = travel_dis
     '''
     
-    TotalD=Data.total_demand 
+    TotalD = Data.total_demand
     
-    VF_MIP=Model("Vehicle_Flow ")
+    VF_MIP = Model("Vehicle_Flow ")
     
-    x=VF_MIP.addVars(complement,M,name="x",vtype=GRB.BINARY)
-    delta=VF_MIP.addVars(x,lb=0,name="delta")
-    v = VF_MIP.addVars(Gc.nodes ,lb=0,name="v")
-    tp= VF_MIP.addVars(Gc.nodes,Gc.nodes,lb=0 , name="tp")   
-    tn= VF_MIP.addVars(Gc.nodes,Gc.nodes,lb=0 , name="tn") 
+    x = VF_MIP.addVars(complement, M, name="x", vtype=GRB.BINARY)
+    delta = VF_MIP.addVars(x, lb=0, name="delta")
+    v = VF_MIP.addVars(Gc.nodes, lb=0, name="v")
+    tp = VF_MIP.addVars(Gc.nodes, Gc.nodes, lb=0, name="tp")
+    tn = VF_MIP.addVars(Gc.nodes, Gc.nodes, lb=0, name="tn")
     VF_MIP.update()
     
-    VF_MIP.setObjective(quicksum(G.nodes[i]['demand'] -v[i] for i in  Gc.nodes)
-                        + (Lambda/TotalD) * quicksum(tp[i,j] + tn[i,j] for i,j in tp.keys())
-                        +Gamma/R * ( Data.Total_dis_epsilon -  quicksum(Dis[i,j]*x[i,j,k] for k in range(M) for i,j in complement if j!=NN+1 ) ) )
+    VF_MIP.setObjective(quicksum(G.nodes[i]['demand'] - v[i] for i in Gc.nodes)
+                        + (Lambda/TotalD) * quicksum(tp[i, j] + tn[i, j] for i, j in tp.keys())
+                        +Gamma/R * (Data.Total_dis_epsilon - quicksum(Dis[i, j]*x[i, j, k]
+                                                                        for k in range(M) for i,j in complement if j!=NN+1 ) ) )
     
-    
-    
-    VF_MIP.addConstr(quicksum(Dis[i,j]*x[i,j,k] for k in range(M) for i,j in complement if j!=NN+1 ) <= Data.Total_dis_epsilon )
-    VF_MIP.addConstrs(tp[i,j]-tn[i,j] ==
-        v[i]*G.nodes[j]['demand']-v[j]*G.nodes[i]['demand'] for i in  Gc.nodes for j in  Gc.nodes )
+    VF_MIP.addConstr(quicksum(Dis[i, j] * x[i, j, k] for k in range(M) for i, j in complement if j != NN+1) <= Data.Total_dis_epsilon)
+    VF_MIP.addConstrs(tp[i, j] - tn[i, j] ==
+        v[i]*G.nodes[j]['demand']-v[j]*G.nodes[i]['demand'] for i in Gc.nodes for j in Gc.nodes)
    
-    VF_MIP.addConstrs(quicksum( x.select(i,'*','*') )==1 for i in range(1,NN))
-    VF_MIP.addConstrs(quicksum( x.select(i,'*',k) )  == quicksum(x.select('*',i,k) ) for i in Gc.nodes for k in range(M) )
-    VF_MIP.addConstrs(quicksum(x.select(0,'*',k) )==1 for k in range(M) )
-    VF_MIP.addConstrs(quicksum(x.select('*',NN+1,k) )==1  for k in range(M) )
-    VF_MIP.addConstrs(v[i]<=G.nodes[i]['demand'] for i in Gc.nodes  )
-    VF_MIP.addConstr(quicksum(v)<=G.nodes[0]['supply'])
-    VF_MIP.addConstrs(quicksum(Dis[i,j]*x[i,j,k] for i,j in complement if j!=NN+1 ) <= Data.Maxtour for k in range(M))
-    VF_MIP.addConstrs(quicksum(delta.select('*','*',k)) <= Q for k in range(M))
-    VF_MIP.addConstrs(delta[i,j,k]<=v[j] for i,j,k in x.iterkeys() if j!=NN+1)
-    VF_MIP.addConstrs(delta[i,j,k]<=G.nodes[j]['demand']*x[i,j,k] for i,j,k in x.iterkeys() if j!=NN+1)
-    VF_MIP.addConstrs(delta[i,j,k]>=v[j]-G.nodes[j]['demand']*(1-x[i,j,k]) for i,j,k in x.iterkeys() if j!=NN+1)
+    VF_MIP.addConstrs(quicksum(x.select(i, '*', '*')) == 1 for i in range(1, NN))
+    VF_MIP.addConstrs(quicksum(x.select(i, '*', k)) == quicksum(x.select('*', i, k)) for i in Gc.nodes for k in range(M))
+    VF_MIP.addConstrs(quicksum(x.select(0, '*', k)) == 1 for k in range(M))
+    VF_MIP.addConstrs(quicksum(x.select('*', NN+1, k)) == 1 for k in range(M))
+    VF_MIP.addConstrs(v[i] <= G.nodes[i]['demand'] for i in Gc.nodes)
+    VF_MIP.addConstr(quicksum(v) <= G.nodes[0]['supply'])
+    VF_MIP.addConstrs(quicksum(Dis[i, j]*x[i, j, k] for i, j in complement if j != NN+1) <= Data.Maxtour for k in range(M))
+    VF_MIP.addConstrs(quicksum(delta.select('*', '*', k)) <= Q for k in range(M))
+    VF_MIP.addConstrs(delta[i, j, k] <= v[j] for i, j, k in x.iterkeys() if j != NN+1)
+    VF_MIP.addConstrs(delta[i, j, k] <= G.nodes[j]['demand'] * x[i, j, k] for i, j, k in x.iterkeys() if j != NN+1)
+    VF_MIP.addConstrs(delta[i, j, k] >= v[j]-G.nodes[j]['demand']*(1-x[i, j, k]) for i, j, k in x.iterkeys() if j != NN+1)
 
-    
     VF_MIP._vars = x
     VF_MIP.update()
     VF_MIP.params.LazyConstraints = 1
-    VF_MIP.params.TimeLimit=7200
-    #VF_MIP.params.TimeLimit=500
+    VF_MIP.params.TimeLimit = 7200
     VF_MIP.optimize(subtourelim)
     
     Objval="infeasible"
-    if VF_MIP.status==2:
-        Objval=VF_MIP.objVal
-        Vv=VF_MIP.getAttr('x',v)
-        Xv=VF_MIP.getAttr('x',x)
-        Tnv=VF_MIP.getAttr('x',tn)
-        #print(Tnv)
-        Tours=[b[0] for b in Xv.items() if b[1]>0.5]
-        routes=[]
-        vehicles={}
+    if VF_MIP.status == 2:
+        Objval = VF_MIP.objVal
+        Vv = VF_MIP.getAttr('x', v)
+        Xv = VF_MIP.getAttr('x', x)
+        Tnv = VF_MIP.getAttr('x', tn)
+        Tours = [b[0] for b in Xv.items() if b[1] > 0.5]
+        routes = []
+        vehicles = {}
         
         for k in range(M):
-            vehicles[k]=[(tub[0],tub[1]) for tub in Tours if tub[2]==k]
-            one_V=vehicles[k]
-            route=routes_finder(one_V,NN)[0] 
-            RDP=[0]
+            vehicles[k] = [(tub[0], tub[1]) for tub in Tours if tub[2] == k]
+            one_V = vehicles[k]
+            route = routes_finder(one_V, NN)[0]
+            RDP = [0]
             for i in route[1:-1]:
-                RDP.append(round(Vv[i],1))
+                RDP.append(round(Vv[i], 1))
             RDP.append(0)
-            routes.append((route,RDP))
+            routes.append((route, RDP))
         for r in routes:
             print(r[0])
             print(r[1])
-            print("Total delivery in this tour: %s" %sum(r[1]))
-            print("The Tour length is : %s \n" %round(Time_Calc(Dis,NN,r[0]),1) )
+            print("Total delivery in this tour: %s" % sum(r[1]))
+            print("The Tour length is : %s \n" % round(Time_Calc(Dis, NN, r[0]), 1))
 
-
-    return (VF_MIP.objVal,VF_MIP.ObjBound ,VF_MIP.Runtime,  VF_MIP.MIPGap)
-    
-    
+    return VF_MIP.objVal, VF_MIP.ObjBound, VF_MIP.Runtime,  VF_MIP.MIPGap
 
 
 

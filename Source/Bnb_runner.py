@@ -37,7 +37,7 @@ if __name__ == "__main__":
         results = {}
         M = {60: 9, 30: 5, 15: 3, 13: 3}   # number of vehicles
         #M=3
-        for inst in [12]:#[1,3,4,10]:#range(15,16):
+        for inst in [10]:#[1,3,4,10]:#range(15,16):
 
             if inst <= 5:
                 ins_type = "T"
@@ -70,13 +70,13 @@ if __name__ == "__main__":
             # please make sure that this won't effect anything (Making the i,NN+1 arc zero )
             for i in range(NN):
                 Data.distances[i, NN+1] = 0
-            Data.Gamma = 0 # for Kratal 1 , for Van 0.1
-            #Data.Lambda = 0
+            Data.Gamma = 10 # for Kratal 1 , for Van 0.1
+            # Data.Lambda = 0
             zeta1 = 2
             if ins_type == "T":
                 zeta2 = 0.5
             if ins_type == "VT":
-                zeta2 = 0.2
+                zeta2 = 0.3
             if ins_type == "VTL":
                 zeta2 = 0.2
                 zeta1 = 1

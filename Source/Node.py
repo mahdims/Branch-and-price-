@@ -11,6 +11,7 @@ import itertools as it
 import numpy as np
 import networkx as nx
 import matplotlib.pyplot as plt
+import Cuts
 
 def edge_in_route(edge,route): # there is a copy of this functin Master.py -- Change Together 
     # This function will check if route use edge i-j or not
@@ -26,6 +27,7 @@ def edge_in_route(edge,route): # there is a copy of this functin Master.py -- Ch
             if route[I_inx+1]==j or route[I_inx-1]==j:
                 indicator=1
     return indicator
+
 
 def calculate_the_obj(Data, R, Routes,RDPs):
     Gc = Data.Gc
@@ -56,20 +58,20 @@ def calculate_the_obj(Data, R, Routes,RDPs):
     return(part1+part2+part3)
 
 
-class Node():
+class Node:
     best_obj = float("Inf")
-    best_node= None
-    best_Route=[]
-    best_RDP=[]
+    best_node = None
+    best_Route = []
+    best_RDP = []
     LowerBound = 0
-    Node_dic = {0:[]}
-    Node_dic2={}
-    NodeCount=0
-    Data=None
-    R=None
-    Tree=nx.Graph()
+    Node_dic = {0: []}
+    Node_dic2 = {}
+    NodeCount = 0
+    Data = None
+    R = None
+    Tree = nx.Graph()
     
-    def __init__(self, ID,PID ,level, pos ,Col_dic,G,edge2keep= [] ,edge2avoid= [] ,Initial_RDP=None):
+    def __init__(self, ID,  PID, level, pos, Col_dic, G, edge2keep=[], edge2avoid=[], cuts=[], Initial_RDP=None):
         
         self.level = level
         self.ID = ID
@@ -79,22 +81,22 @@ class Node():
         self.G = G
         self.edges2keep = edge2keep
         self.edge2avoid = edge2avoid
-        self.Objval = None
+        self.Objval = 0
         self.selected_R_D = []
         self.selected_route = []
         self.feasible = self.check_G_feasibility()
         self.Dis = Node.Data.distances
-
         self.Col_runtime = 0
-
-        # solve the node - proccessing 
-        if self.feasible :
+        self.cuts = cuts
+        self.Int_Objval, self.Int_route, self.Int_RDP = None, None, None
+        # solve the node - processing
+        if self.feasible:
             self.Col_dic_update(Initial_RDP) # will add feasible solutions to the Col Dic by initial heuristic
             if self.feasible:
                 self.solve() # solve with column generation
                 self.Upper_bound_finder()
 
-        # Extra information (Save the nodes and compelet the tree fro drawings)
+        # Extra information (Save the nodes and complete the tree fro drawings)
         Node.NodeCount += 1
         '''        
         Node.Node_dic2[self.ID] = self
@@ -104,7 +106,7 @@ class Node():
             Node.Node_dic[level]=[self]
         '''
         Node.Tree.add_node(self.ID)
-        Node.Tree.add_edge(  self.Parent_ID , self.ID  )
+        Node.Tree.add_edge(self.Parent_ID, self.ID)
 
     def __repr__(self):
         return f"Node {self.ID}: objective: {round(self.Objval,2)}"
@@ -145,7 +147,7 @@ class Node():
         for n in self.G.nodes:
             if n != 0 and n != Node.Data.NN+1 :
                 edgeset.remove((n, Node.Data.NN+1))
-        #print("Number of existed edges: %s" %(len(edgeset)-Node.Data.NN+1))
+        # print("Number of existed edges: %s" %(len(edgeset)-Node.Data.NN+1))
 
         if not edgeset:
             return 0
@@ -175,7 +177,7 @@ class Node():
         New_Col, self.feasible = Initial_feasibleSol(Node.Data, self.G, edges2keep=self.edges2keep,
                                                      edges2avoid=self.edge2avoid, RDP=RDP)
         if not self.feasible:
-            print("Initial heuristic say Infeasible")
+            print("Initial heuristic says Infeasible")
         # Add the newly generated columns to the Col_dic
         for R_D in New_Col:
             unique, inx = R_D.Is_unique(self.Col_dic)
@@ -188,17 +190,33 @@ class Node():
         del New_Col
 
     def solve(self):
-        # This function solves a node (integer relaxtion) by column generation
-        # Build the master problem 
+        # This function solves a node (integer relaxation) by column generation
+
+
+        # Build the master problem
         RMP = MasterModel(Node.Data, self.Col_dic, Node.R, self.edges2keep)
         # Build the sub-problem only the constraints and variables 
-        Sub, x, q, a = SubProblem(Node.Data, self.G, self.Dis, self.edges2keep, self.edge2avoid)
-        sub = (Sub, x, q, a)
-
+        Sub = SubProblem(Node.Data, self.G, self.Dis, self.edges2keep, self.edge2avoid)
+        # Add cuts from previous node in BnP tree
+        RMP = Cuts.update_master_subrow_cuts(RMP, self.Col_dic, len(self.cuts), self.cuts)
+        Sub = Cuts.update_subproblem_with_cuts(Sub, len(self.cuts), self.cuts)
         # Start the Column Generation
         start = time()
-        (self.feasible, self.Objval, self.Y, self.Col_dic) = ColumnGen(Node.Data, Node.R, RMP, self.G, self.Col_dic,
-                                                                       self.Dis, self.edges2keep, self.edge2avoid, sub)
+        while 1:
+            self.feasible, RMP, self.Objval, self.Y, self.Col_dic = ColumnGen(Node.Data, Node.R, RMP, self.G, self.Col_dic,
+                                                                           self.Dis, self.edges2keep, self.edge2avoid, Sub, self.cuts)
+            if not self.feasible: break
+            print(f"Current lowerbound in Node {self.ID}: {self.Objval}")
+            # Add cuts
+            new_subrow_cuts = Cuts.separation_subrow(Node.Data, self.Col_dic, self.Y, self.cuts)
+            self.cuts += new_subrow_cuts
+            if len(new_subrow_cuts):
+                print(f"Number of cuts added : {len(new_subrow_cuts)}")
+                RMP = Cuts.update_master_subrow_cuts(RMP, self.Col_dic, len(self.cuts), new_subrow_cuts)
+                Sub = Cuts.update_subproblem_with_cuts(Sub, len(self.cuts), new_subrow_cuts)
+            else:
+                break
+
         self.Col_runtime = time()-start
 
         if self.feasible:
@@ -232,55 +250,52 @@ class Node():
             if val <= 1.1 * Edge_Val[selected_edge]:
                 counter += 1
         print("I select the branching edges among %d alternative randomly!!" %counter)
-
         L_Node = self.Arc_Branching("left", *selected_edge)
         R_Node = self.Arc_Branching("right", *selected_edge)
         
         return [L_Node, R_Node]
         
-        
-        
-    def Arc_Branching(self,WhichNode,i,j):
+    def Arc_Branching(self, WhichNode, i, j):
         # This function will branch on given edge and generates 2 child nodes
         
-        Col_dic=copy.copy(self.Col_dic)
-        G=copy.deepcopy(self.G)
+        Col_dic = copy.copy(self.Col_dic)
+        G = copy.deepcopy(self.G)
         
         if WhichNode == "left":
             # update the set columns by removing edge i-j or j-i
-            for inx , R_D in self.Col_dic.items():
-                if edge_in_route( (i,j) , R_D.route ):
-                    #RMP.remove( RMP.getVarByName('y[%d]'%inx) )
+            for inx, R_D in self.Col_dic.items():
+                if edge_in_route((i, j), R_D.route):
                     del Col_dic[inx]
                     
             # update the graph as well
-            G.remove_edge(i,j)  
+            G.remove_edge(i, j)
             
             edge2avoid = copy.copy(self.edge2avoid)
-            edge2avoid.append( (i,j) )
+            edge2avoid.append((i, j))
 
-            return Node( Node.NodeCount, self.ID , self.level+1 ,WhichNode , Col_dic, G, edge2avoid = edge2avoid , edge2keep=self.edges2keep  )
+            return Node(Node.NodeCount, self.ID, self.level+1, WhichNode, Col_dic, G,
+                        cuts=self.cuts, edge2avoid=edge2avoid, edge2keep=self.edges2keep)
 
         elif WhichNode == "right":
             
-            new_cols={} #jsut keep the RD that have i-j or j-i Ot niether of them 
-            for inx , R_D in Col_dic.items():
+            new_cols = {} # keep the RD that have i-j or j-i Ot niether of them
+            for inx, R_D in Col_dic.items():
                 if i in R_D.route or j in R_D.route:
-                    if edge_in_route( (i,j) ,R_D.route):## check if it have either for i-j and j-i
+                    if edge_in_route((i, j), R_D.route): # check if it have either for i-j and j-i
                         new_cols[inx] = R_D
                     else:
-                        if i==0 and j not in R_D.route:  #If i is 0 and j is not in route  
+                        if i == 0 and j not in R_D.route:  # If i is 0 and j is not in route
                             new_cols[inx] = R_D   
-                else: #IF the route do not have both i and j 
+                else: # If the route do not have both i and j
                     new_cols[inx] = R_D
         
-            Col_dic=new_cols
+            Col_dic = new_cols
             edges2keep = copy.copy(self.edges2keep)
-            edges2keep.append( (i,j) )
+            edges2keep.append((i, j))
             
-            return Node( Node.NodeCount  , self.ID , self.level+1 ,WhichNode , Col_dic, G, edge2keep = edges2keep, edge2avoid=self.edge2avoid  )
+            return Node(Node.NodeCount, self.ID, self.level+1, WhichNode, Col_dic, G,
+                        cuts=self.cuts, edge2avoid=self.edge2avoid, edge2keep=edges2keep)
 
-    
     def integer(self):
         # This function checks if all master problem variables are integer or not
         if self.feasible:
@@ -298,37 +313,36 @@ class Node():
     @classmethod
     def Draw_the_tree(cls):
         # This function draws the Branch and bound tree 
-        W=100
-        label_dic={} # lable dictionery 
-        pos={} # node position dictionery
-        x={0:W/2}
-        y={}
-        color_map=[]
-        maxlevel= len(Node.Node_dic)
-        Ystep=W/maxlevel
-        for le in range( maxlevel ):
-            NfNodes= len( Node.Node_dic[le] )
-            Xstep  = W/4*NfNodes
-            Node.Node_dic[le]=sorted(Node.Node_dic[le], key=lambda x: x.Parent_ID)
+        W = 100
+        label_dic = {} # lable dictionery
+        pos = {} # node position dictionery
+        x = {0: W/2}
+        y = {}
+        color_map = []
+        maxlevel = len(Node.Node_dic)
+        Ystep = W/maxlevel
+        for le in range(maxlevel):
+            NfNodes = len(Node.Node_dic[le])
+            Xstep = W/4*NfNodes
+            Node.Node_dic[le] = sorted(Node.Node_dic[le], key=lambda x: x.Parent_ID)
             for inx,n in enumerate(Node.Node_dic[le]):
     
-                if n.pos=="left":
+                if n.pos == "left":
                     x[n.ID] = x[Node.Node_dic2[n.Parent_ID].ID] - Xstep
-                elif n.pos=="right":
+                elif n.pos == "right":
                     x[n.ID] = x[Node.Node_dic2[n.Parent_ID].ID] + Xstep
                 else:
                     x[n.ID] = x[Node.Node_dic2[n.Parent_ID].ID]
               
                 y[n.ID] = 100 - Ystep * n.level
-                pos[n.ID]= (x[n.ID],y[n.ID])
+                pos[n.ID] = (x[n.ID], y[n.ID])
                 if not n.feasible:
-                    label_dic[n.ID]= "IF-%d " %n.ID
+                    label_dic[n.ID] = "IF-%d " % n.ID
                 elif n.integer():
-                    label_dic[n.ID]= "IN-%d \n %s" % ( n.ID , round( n.Objval , 1) )
+                    label_dic[n.ID] = "IN-%d \n %s" % (n.ID, round(n.Objval, 1))
                 else:
-                    label_dic[n.ID]= "%d-%d" %(n.ID,round( n.Objval , 1) )
-                    
-        
+                    label_dic[n.ID] = "%d-%d" % (n.ID, round(n.Objval, 1))
+
         '''
         for n in Node.Node_list:
             if not n.feasible:
@@ -343,7 +357,4 @@ class Node():
         
         nx.draw(Node.Tree, node_size=700,  node_color = color_map,labels=label_dic, with_labels = True,pos=pos, node_shape='s')
         
-        
         plt.show()
-       
-            

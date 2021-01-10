@@ -4,7 +4,8 @@ import pickle as Pick
 import copy
 import networkx as nx
 import itertools as it
-## Necessary functions
+
+
 def Make_it_compatible(edges2keep, edges2avoid):
     edges2keep_dic = {}
     edges2avoid_dic = {}
@@ -541,7 +542,7 @@ def insertion_operator(current_path):
     return current_path, improvement
 
 
-def GRASP(Data, edges2keep, edges2avoid, Duals,R):
+def GRASP(Data, edges2keep, edges2avoid, Duals, R, cuts):
     NN = Data.NN
     edges2keep , edges2avoid = Make_it_compatible(edges2keep , edges2avoid)
     Path.edges2keep = edges2keep
