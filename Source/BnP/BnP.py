@@ -1,11 +1,10 @@
-from BnP.Node import Node
-from Initial_Alg import Alg
-import Real_Input
-import pickle as Pick
 import time
 import itertools as it
 import numpy as np
-from utils import Seq
+from utils import Seq, utils
+from BnP.Node import Node
+import os
+
 
 def print_routes(node):
 
@@ -25,19 +24,6 @@ def print_routes(node):
             print("\n")
             print(route.route)
             print(Node.best_RDP[ID])
-
-
-    return
-
-def read_object(filename):
-    with open(filename, 'rb') as input:
-        obj = Pick.load(input)
-    return obj
-
-
-def save_object(obj, filename):
-    with open(filename, 'wb') as output:  # Overwrites any existing file.
-        Pick.dump(obj, output, Pick.HIGHEST_PROTOCOL)
 
 
 def calculate_the_obj(Data, R, Routes, RDPs):
@@ -74,18 +60,22 @@ def calculate_the_obj(Data, R, Routes, RDPs):
     return(part1+part2+part3)
 
 
-def print_updates(start):
+def print_updates(start, Filename):
     # print(f"Open nodes : {len(stack)}")
     Elapsed_time = round(time.time() - start, 3)
-    print("LB       // UB       // GAP   //Elapsed T")
-    print(f"{round(Node.LowerBound, 2)}\t{round(Node.UpperBound, 2)}\t{Node.Gap}\t{Elapsed_time}")
+    print("LB       // UB       // GAP   //Elapsed T // Time_2_best")
+    print(f"{round(Node.LowerBound, 2)}\t{round(Node.UpperBound, 2)}\t{Node.Gap}\t{Elapsed_time}\t{Node.time2UB}")
+
+    results = [Node.UpperBound, Node.LowerBound, Node.Gap, Node.time2UB, Elapsed_time]
+    OWD = os.getcwd()
+    utils.save_object(results, OWD + f"/Data/updated_results/{Filename}")
 
 
-def branch_and_bound(Data, R, MaxTime):
+def branch_and_bound(Data, MaxTime, Filename):
     
     start = time.time()
     Node.Data = Data
-    Node.R = R
+    Node.R = Data.R
 
     # Set initial Parameters
     Node.best_objtime = 0
@@ -106,14 +96,15 @@ def branch_and_bound(Data, R, MaxTime):
 
     print("Start the BnP with root value %s" % Node.LowerBound)
     if root.integer(): # check if we need to continue
-        print_updates(start)
+        print_updates(start, Filename)
         UB, LB, time2UB, Gap = Node.UpperBound, Node.LowerBound, Node.time2UB, Node.Gap
         Node.reset()
-        return UB, LB, time2UB, Elapsed_time, Gap
+        return UB, LB, Gap, time2UB, Elapsed_time
 
-    while len(stack) and Node.Gap > 0.009999999999 and Elapsed_time < MaxTime:
+    while len(stack) and Node.Gap >= 0.012 and Elapsed_time < MaxTime:
+        Elapsed_time = round(time.time() - start, 3)
 
-        print_updates(start)
+        print_updates(start, Filename)
 
         # best first search strategy
         stack = sorted(stack, key=lambda x: x.lower_bound)
@@ -148,9 +139,9 @@ def branch_and_bound(Data, R, MaxTime):
 
         node.delete()
 
-    print_updates(start)
+    print_updates(start, Filename)
 
     Elapsed_time = round(time.time() - start, 3)
     UB, LB, time2UB, Gap = Node.UpperBound, Node.LowerBound, Node.time2UB, Node.Gap
     Node.reset()
-    return UB, LB, time2UB, Elapsed_time, Gap
+    return UB, LB, Gap, time2UB, Elapsed_time

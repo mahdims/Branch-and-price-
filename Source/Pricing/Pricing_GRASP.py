@@ -272,7 +272,7 @@ def GRASP(Data, edges2keep, edges2avoid, Duals, R):
     # construct the initial path
     current_path, any_luck = constructive_alg(Data, All_seq, S)
     if not any_luck:
-        return 0, None, None
+        return 0, None, 100
     # current_path = Two_opt(current_path)
 
     # Set of generated paths

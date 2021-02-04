@@ -1,6 +1,7 @@
 import sys
-import numpy as np
+import pickle as Pick
 import random as rand
+import Real_Input
 from utils import Route_delivery as RD
 
 
@@ -193,3 +194,13 @@ def Optimize(Data, routes, length):
 
 global counter0_
 
+
+def save_object(obj, filename):
+    with open(filename, 'wb') as output:  # Overwrites any existing file.
+        Pick.dump(obj, output, Pick.HIGHEST_PROTOCOL)
+
+
+def read_object(filename):
+    with open(filename, 'rb') as input:
+        obj = Pick.load(input, encoding='latin1')
+    return obj

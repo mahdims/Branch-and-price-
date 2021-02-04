@@ -1,6 +1,7 @@
 *.pyc
 *.log
 *.json
+*.lp
 *.xlsx
 /.idea
 

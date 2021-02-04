@@ -128,9 +128,8 @@ def Optimal_quantity(Data, routes):
 
     for route in routes:
         RDP = [0] * Data.NN
-        for seq in route[1:-1]:
-            for i in seq:
-                RDP[i] = q[i].x
+        for i in route.nodes_in_path:
+            RDP[i] = q[i].x
 
         route.RDP[1] = RDP
 

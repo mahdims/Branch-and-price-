@@ -282,16 +282,8 @@ def ColumnGen(Data, R, RMP, G_in, Col_dic, dis, edges2keep, edges2avoid, Sub, cu
     Heuristic_works = 1
     Solved_by_Heuristic = 0
     RMP_objvals.append(133)
-
-    # test
-    for col in Col_dic.values():
-        if 0 in col.nodes_in_path or NN+1 in col.nodes_in_path:
-            print("Keep : %s" %edges2keep["E"])
-            print("Avoid : %s" %edges2avoid["E"])
-            print(col.nodes_in_path)
-            print(col.route)
-            sys.exit("Before the column generation")
-    while Subobj < Stoping_R_cost:
+    tail_counter = 0
+    while Subobj < Stoping_R_cost and tail_counter < 15:
         # Solve the Master problem
         # print("We are solving the Master")
         RMP.optimize() 
@@ -301,23 +293,13 @@ def ColumnGen(Data, R, RMP, G_in, Col_dic, dis, edges2keep, edges2avoid, Sub, cu
             sys.exit()
             return 0, RMP, Data.BigM, [], Col_dic
         # print("Master Problem Optimal Value: %f" %RMP.objVal)
+        if RMP_objvals[-1] * 0.95 <= RMP.objVal <= RMP_objvals[-1] * 1.05 and Solved_by_Heuristic==0 and we_found_cols ==0:
+            tail_counter += 1
+        else:
+            tail_counter = 0
         RMP_objvals.append(RMP.objVal)
         # Get the dual variables
         Duals = get_Duals(NN, RMP, edges2keep)
-        '''
-        (_, linear, totaltime, visit, vehicle, Inv, E_keep, sub_row) = Duals
-        print(f"Linear duals {sum(sum(linear))}")
-        if totaltime:
-            print(f"Total time duals {totaltime}")
-        if any(visit):
-            print(f"Visit duals {sum(visit)}")
-        if vehicle:
-            print(f"Vehicle duals {vehicle}")
-        if Inv:
-            print(f"Inventrory duals {Inv}")
-        if E_keep:
-            print(f"Edges to keep duals {sum(E_keep.values())}")
-        '''
         # Solve Sub Problem
         # First search for the negative value columns and then  if you can not find any move on to the other approaches.
         # First we try the heuristics and then if the obj function found to be zero by then it is time to run
@@ -404,6 +386,9 @@ def ColumnGen(Data, R, RMP, G_in, Col_dic, dis, edges2keep, edges2avoid, Sub, cu
                 RMP = Update_Master_problem(Gc, R, edges2keep, cuts, RMP, Col_dic, Col_ID, RDP_ID)
             # print(f"Out of {len(MIP_solutions)} columns {old_count} were already there.")
     # read the final selected Y variables
+    if RMP.status != 2:
+        RMP.optimize()
+
     Y = Get_the_Y_variables(RMP)
     # print("Master Problem Optimal Value: %f" %RMP.objVal)
     return 1, RMP, RMP_objvals[-1], Y, Col_dic
