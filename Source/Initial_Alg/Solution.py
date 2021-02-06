@@ -118,11 +118,12 @@ def Optimal_quantity(Data, routes):
                      + (Data.Lambda / Data.total_demand) * quicksum(tp[i, j] + tn[i, j] for i, j in tp.keys() ) )
 
     linear = Quant.addConstrs((tp[i, j] - tn[i, j] +
-                             q[i] * Gc.nodes[j]['demand'] - q[j] * Gc.nodes[i]['demand'] == 0
+                             q[j] * Gc.nodes[i]['demand'] - q[i] * Gc.nodes[j]['demand'] == 0
                              for i in Gc.nodes for j in Gc.nodes), name="linear")
 
     Quant.addConstr(quicksum(q[i] for i in Gc.nodes) <= Data.G.nodes[0]['supply'])
     Quant.addConstrs(quicksum(q[i] for i in route.nodes_in_path) <= Data.Q for route in routes)
+    Quant.addConstrs(q[i] <= Gc.nodes[i]['demand'] for i in Gc.nodes)
     Quant.Params.OutputFlag = 0
     Quant.optimize()
 
@@ -131,6 +132,6 @@ def Optimal_quantity(Data, routes):
         for i in route.nodes_in_path:
             RDP[i] = q[i].x
 
-        route.RDP[1] = RDP
+        route.set_RDP(RDP)
 
     return routes, Quant.objVal

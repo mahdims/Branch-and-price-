@@ -55,7 +55,7 @@ class RouteDel:
     def feasibility_check(self, Data):
         self.time_violation = max(0, self.travel_time - Data.Maxtour)
         self.time_F = self.time_violation == 0
-        self.cap_violation = max(0, self.total_deliveries - Data.Q)
+        self.cap_violation = max(0, round(self.total_deliveries,0) - Data.Q)
         self.cap_F = self.cap_violation == 0
 
     def where(self, node):
@@ -126,6 +126,7 @@ class RouteDel:
         self.calc_time(dis)
 
     def add_RDP(self, RDP):
+        self.total_deliveries = sum(RDP)
         RDP_ID = max(self.RDP.keys()) + 1
         self.RDP[RDP_ID] = RDP
         return RDP_ID

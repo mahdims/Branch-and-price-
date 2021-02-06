@@ -153,7 +153,7 @@ def TabuRoute(Data, dis, Pars, CurrentSol):
     No_Change_cont = 0
     iter_count = 0
     while No_Change_cont <= Max_No_Change:
-        # print(f"Iteration {iter_count}: current_ob: {Best_F_Sol.score}")
+        print(f"Iteration {iter_count}: current_ob: {Best_F_Sol.score}")
         iter_count += 1
         # Step 1 Node selection
         # Verify the infeasibility of routes
@@ -177,7 +177,6 @@ def TabuRoute(Data, dis, Pars, CurrentSol):
                 # test inserting the node to a possible path
 
                 P_Sol = CurrentSol.Best_insertion_cost(dis, alpha, beta, v, V_route_inx, r_id)
-
                 # Check if the move is Tabu
                 if (v[0], r_id) in tabu_list.keys():
 
@@ -211,7 +210,8 @@ def TabuRoute(Data, dis, Pars, CurrentSol):
                 Last_Best = BestSol 
                 
                 if CurrentSol.feasible and CurrentSol.score <= Best_F_Sol.score:
-                    Best_F_Sol = CurrentSol # update the best fesibel solution    
+                    Best_F_Sol = CurrentSol
+                    # update the best feasible solution
                 if CurrentSol.score <= BestSol.score:
                     BestSol = CurrentSol
                     
@@ -254,9 +254,9 @@ def Initial_feasibleSol(Data, dis, edges2keep, edges2avoid):
     beta = 1000
 
     initial_Sol_count = 0
-    no_success =0
+    no_success = 0
     new_sols = []
-    while initial_Sol_count < 1 and no_success < 50:
+    while initial_Sol_count < 2 and no_success < 50:
         starting_angel = random.randint(0, 360)
         # print(f"I started the initial sol once again with Angle {starting_angel}")
         All_seq = change_angle_from_depot(Data.All_seq, starting_angel)
@@ -275,4 +275,4 @@ def Initial_feasibleSol(Data, dis, edges2keep, edges2avoid):
         else:
             no_success += 1
 
-    return new_sols, initial_Sol_count >=1
+    return new_sols, initial_Sol_count >= 1

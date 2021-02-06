@@ -1,4 +1,6 @@
 import sys
+import numpy as np
+import math
 import pickle as Pick
 import random as rand
 import Real_Input
@@ -179,20 +181,60 @@ def roul_wheel(dic):
     return spin(roulette_wheel)
 
 
-def Optimize(Data, routes, length):
-    optimized_routes = []
+def data_preparation(Case_name, NN, M, inst):
 
-    for route in routes:
-        if len(route.route) > 1:
-            route = TSP_Solver.solve(length, route, start=route[0], end=route[-1])
-            Route_object = RD.RouteDel(route, Data, length)
-            optimized_routes.append(Route_object)
+    if Case_name == "Van":
+        if inst <= 5:
+            ins_type = "T"
+        elif inst <= 10:
+            ins_type = "VT"
         else:
-            optimized_routes.append(route) # this route is [0] and will be deleted in insertation
+            ins_type = "VTL"
+        File_name = '%s_%d_%d_%d' % (Case_name, NN, M, inst)
+        R_dic = read_object(f"./Data/{Case_name}/TObj_R_Van{NN}")
 
-    return optimized_routes
+    elif Case_name == "Kartal":
+        if inst <= 10:
+            ins_type = "T"
+        elif inst <= 20:
+            ins_type = "VT"
+            inst -= 10
+        else:
+            ins_type = "VTL"
+            inst -= 20
+        File_name = '%s_%s_%d' % (Case_name, ins_type, inst)
+        R_dic = read_object("./TObj_R_Kartal")
 
-global counter0_
+    Data = read_object(f'./Data/{Case_name}/{File_name}')
+    R = R_dic[File_name]
+    Data.R = R
+
+    # If the distance are symmetric
+    # test_the_distance_symmetry(Data.distances)
+    # please make sure that this won't effect anything (Making the i,NN+1 arc zero )
+    for i in range(NN):
+        Data.distances[i, NN + 1] = 0
+
+    if Case_name == "Van":
+        Data.Gamma = 0.1
+    elif Case_name == "Kartal":
+        Data.Gamma = 1
+
+    # Data.Lambda = 0
+    zeta1 = 2
+    if ins_type == "T":
+        zeta2 = 0.5
+    if ins_type == "VT":
+        zeta2 = 0.2
+    if ins_type == "VTL":
+        zeta2 = 0.2
+        zeta1 = 1
+
+    Data.Maxtour = int(zeta1 * math.ceil(float(NN) / M) * np.percentile(list(Data.distances.values()), 50))
+    Data.Q = int(zeta2 * Data.G.nodes[0]['supply'] / M)
+    Data.Total_dis_epsilon = int(0.85 * M * Data.Maxtour)
+
+    return Data, File_name
 
 
 def save_object(obj, filename):

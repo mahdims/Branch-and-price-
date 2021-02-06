@@ -119,23 +119,23 @@ def Model1_V2(Data, R):
     v = VF_MIP.addVars(G.nodes, lb=0, name="v")
     w = VF_MIP.addVars(G.nodes, lb=0, name="w")
     u = VF_MIP.addVars(G.nodes, lb=0, name="u")
-    tp= VF_MIP.addVars(Gc.nodes,Gc.nodes,lb=0 , name="tp")
-    tn= VF_MIP.addVars(Gc.nodes,Gc.nodes,lb=0 , name="tn")
+    tp = VF_MIP.addVars(Gc.nodes, Gc.nodes, lb=0, name="tp")
+    tn = VF_MIP.addVars(Gc.nodes, Gc.nodes, lb=0, name="tn")
     VF_MIP.update()
     # VF_MIP.setObjective(quicksum(Dis[i,j]*x[i,j] for i,j in complement if j!=NN+1 ) )
     VF_MIP.setObjective(quicksum(G.nodes[i]['demand'] - v[i] for i in Gc.nodes)
-                        + (Lambda/TotalD) * quicksum(tp[i,j] + tn[i,j] for i,j in tp.keys())
-                        +Gamma/R * (Data.Total_dis_epsilon - quicksum(Dis[i,j]*x[i,j] for i,j in complement if j!=NN+1 ) ) )
+                        + (Lambda/TotalD) * quicksum(tp[i, j] + tn[i, j] for i, j in tp.keys())
+                        + Gamma/R * (Data.Total_dis_epsilon - quicksum(Dis[i, j]*x[i, j] for i, j in complement if j != NN+1)))
     
-    #VF_MIP.addConstr(quicksum(Dis[i,j]*x[i,j] for i,j in complement if j!=NN+1 ) <= Data.Total_dis_epsilon )
-    #VF_MIP.addConstrs(tp[i,j]-tn[i,j] ==
-    #    v[i]*G.node[j]['demand']-v[j]*G.node[i]['demand'] for i in  Gc.nodes for j in  Gc.nodes )    
+    VF_MIP.addConstr(quicksum(Dis[i, j]*x[i, j] for i, j in complement if j != NN+1) <= Data.Total_dis_epsilon)
+    VF_MIP.addConstrs(tp[i, j]-tn[i, j] ==
+        v[i]*G.nodes[j]['demand']-v[j]*G.nodes[i]['demand'] for i in  Gc.nodes for j in Gc.nodes)
    
     VF_MIP.addConstrs(quicksum(x.select(i, '*')) == 1 for i in range(1, NN))
     VF_MIP.addConstrs(quicksum(x.select(i, '*')) == quicksum(x.select('*', i)) for i in Gc.nodes)
     VF_MIP.addConstr(quicksum(x.select(0, '*')) == M)
     VF_MIP.addConstr(quicksum(x.select('*', NN+1)) == M)
-    VF_MIP.addConstrs(v[i] == G.nodes[i]['demand'] for i in Gc.nodes)
+    VF_MIP.addConstrs(v[i] <= G.nodes[i]['demand'] for i in Gc.nodes)
     VF_MIP.addConstr(quicksum(v) <= G.nodes[0]['supply'])
     VF_MIP.addConstrs(u[i] <= Data.Maxtour for i in Gc.nodes)
     VF_MIP.addConstrs(w[i] <= Q for i in G.nodes)
@@ -144,12 +144,12 @@ def Model1_V2(Data, R):
     VF_MIP.addConstr(v[0] == 0)
     VF_MIP.addConstr(w[0] == 0)
     VF_MIP.addConstr(u[0] == 0)
-    #VF_MIP._vars = x
+    # VF_MIP._vars = x
     VF_MIP.update()
-    #VF_MIP.params.LazyConstraints = 1
+    # VF_MIP.params.LazyConstraints = 1
     VF_MIP.params.TimeLimit = 7200
     VF_MIP.params.MIPGap = 0.0001
-    #VF_MIP.params.TimeLimit=500
+    # VF_MIP.params.TimeLimit=500
     VF_MIP.optimize()
     
     Objval = "infeasible"

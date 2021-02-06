@@ -128,7 +128,7 @@ def Model1(Data,R):
     
     VF_MIP.addConstr(quicksum(Dis[i, j] * x[i, j, k] for k in range(M) for i, j in complement if j != NN+1) <= Data.Total_dis_epsilon)
     VF_MIP.addConstrs(tp[i, j] - tn[i, j] ==
-        v[i]*G.nodes[j]['demand']-v[j]*G.nodes[i]['demand'] for i in Gc.nodes for j in Gc.nodes)
+        v[j]*G.nodes[i]['demand']-v[i]*G.nodes[j]['demand'] for i in Gc.nodes for j in Gc.nodes)
    
     VF_MIP.addConstrs(quicksum(x.select(i, '*', '*')) == 1 for i in range(1, NN))
     VF_MIP.addConstrs(quicksum(x.select(i, '*', k)) == quicksum(x.select('*', i, k)) for i in Gc.nodes for k in range(M))
