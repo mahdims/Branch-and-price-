@@ -3,10 +3,12 @@ import networkx as nx
 import sys
 from utils import utils,Seq
 # This is the route deliveries class that is used in initial solution class and Column generation _ branch and price
+
+
 class RouteDel:
     E2K = None
-    edges2keep = None
-    edges2avoid = None
+    nodes2keep = None
+    nodes2avoid = None
     routes_set = []
     Data = []
     dis = []
@@ -27,9 +29,14 @@ class RouteDel:
         self.time_violation = None
         self.cap_F = None
         self.time_F = None
+        self.keep_avoid_F = 0
+        self.feasibility_check(RouteDel.Data)
 
     def __len__(self):
         return len(self.route)
+
+    def __repr__(self):
+        return f"{self.route}"
 
     def __getitem__(self, inx):
         try:
@@ -49,22 +56,23 @@ class RouteDel:
         PreNode = self[0]
         for n_inx, n in enumerate(self.route[1:-1]):
             self.travel_time += dis[PreNode[-1], n[0]] + n.string_time
-            self.travel_time += RouteDel.Data.Maxtour * utils.avoid_edges_penalty(PreNode, n, RouteDel.edges2avoid)
             PreNode = n
+        # self.travel_time += RouteDel.Data.Penalty * (1 - utils.avoid_check(self, RouteDel.nodes2avoid))
+        # self.travel_time += RouteDel.Data.Penalty * (1 - utils.keep_check(self, RouteDel.nodes2keep))
 
     def feasibility_check(self, Data):
         self.time_violation = max(0, self.travel_time - Data.Maxtour)
         self.time_F = self.time_violation == 0
-        self.cap_violation = max(0, round(self.total_deliveries,0) - Data.Q)
+        self.cap_violation = max(0, round(self.total_deliveries, 0) - Data.Q)
         self.cap_F = self.cap_violation == 0
+        self.keep_avoid_F = 2 - utils.avoid_check(self, RouteDel.nodes2avoid) - utils.keep_check(self, RouteDel.nodes2keep)
 
     def where(self, node):
-
+        if isinstance(node, Seq.Sequence):
+            node = node[0]
         for inx, seq in enumerate(self.route):
             if node in seq:
                 return inx
-
-        return None
 
     def is_visit(self, sq):
         try:
@@ -78,6 +86,7 @@ class RouteDel:
                 elif sq == 0:
                     return 1
         except :
+            print("Stop at is visit !! ")
             sys.exit(self.route)
 
         return 0
@@ -85,20 +94,26 @@ class RouteDel:
     def insertion_time(self, dis, i, p):
         # the total route time change with inserting seq p in location i (add penalty Data.Maxtour if avoid edges)
         try:
-            time = dis[self.route[i].string[-1], p.string[0]] + dis[p.string[-1], self.route[i + 1].string[0]] \
-                   + p.string_time - dis[self.route[i].string[-1], self.route[i + 1].string[0]]
+            time = dis[self.route[i][-1], p[0]] + dis[p[-1], self.route[i + 1][0]] \
+                   + p.string_time - dis[self.route[i][-1], self.route[i + 1][0]]
         except:
             sys.exit((self.route[i], self.route[i + 1], p))
-        # deduction if the avoid edge bracks by the insertion
-        last_node, next_node = self.route[i], self.route[i+1]
-        if utils.avoid_edges_penalty(last_node, next_node, RouteDel.edges2avoid):
-            time -= RouteDel.Data.Maxtour + 1
 
-        # Adding the penalty cost for having an avoid ing edge
-        if utils.avoid_edges_penalty(self.route[i], p, RouteDel.edges2avoid):
-            time += RouteDel.Data.Maxtour + 1
-        if utils.avoid_edges_penalty(p, self.route[i+1], RouteDel.edges2avoid):
-            time += RouteDel.Data.Maxtour + 1
+        '''
+        feasibility = 0 
+        # Adding the penalty cost for avoid and violation of keeps
+        if utils.avoid_NR_check(self, p, RouteDel.nodes2avoid):
+            feasibility += 1
+            # time += RouteDel.Data.Penalty
+        if utils.keep_NR_check(self, p, RouteDel.nodes2keep):
+            feasibility += 1
+            # time += RouteDel.Data.Penalty
+
+        # deduce the penalty if you add a keep together
+        if not utils.keep_NR_check(self, p, RouteDel.nodes2keep) and any(p[0] in e for e in RouteDel.nodes2keep):
+            feasibility -= 1
+            # time -= RouteDel.Data.Penalty
+        '''
 
         return time
 
@@ -124,6 +139,7 @@ class RouteDel:
         self.build_nodes()
         # Update the travel time of route
         self.calc_time(dis)
+        self.feasibility_check(RouteDel.Data)
 
     def add_RDP(self, RDP):
         self.total_deliveries = sum(RDP)

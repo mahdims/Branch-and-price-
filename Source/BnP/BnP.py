@@ -68,7 +68,7 @@ def print_updates(start, Filename):
 
     results = [Node.UpperBound, Node.LowerBound, Node.Gap, Node.time2UB, Elapsed_time]
     OWD = os.getcwd()
-    utils.save_object(results, OWD + f"/Data/updated_results/{Filename}")
+    utils.save_object(results, OWD + f"/Data/updated_results/new_branching/{Filename}")
 
 
 def branch_and_bound(Data, MaxTime, Filename):
@@ -82,14 +82,14 @@ def branch_and_bound(Data, MaxTime, Filename):
     Gap = 100
     Elapsed_time = 0
 
-    edges2keep = {"N": {}, "E": []}
-    edges2avoid = {"N": {}, "E": []}
+    nodes2keep = {"N": {}, "E": []}
+    nodes2avoid = {"N": {}, "E": []}
 
     # Find the initial Columns
-    Data.All_seq, _ = Seq.Create_seq(Data, edges2keep["N"])
+    Data.All_seq, _ = Seq.Create_seq(Data, {})
 
     # make the root node
-    root = Node(0, 0, 0, "center", {}, Data.G, edge2keep=edges2keep, edge2avoid=edges2avoid)
+    root = Node(0, 0, 0, "center", {}, Data.G, nodes2keep=nodes2keep, nodes2avoid=nodes2avoid)
     # Stack is the pool of feasible BnB nodes
     stack = [root]
     Node.LB_UB_GAP_update(stack, root, start)
@@ -119,7 +119,7 @@ def branch_and_bound(Data, MaxTime, Filename):
 
         # Fathom by integrity
         if node.integer():
-            Node.Node.LB_UB_GAP_update(node, start)
+            Node.LB_UB_GAP_update(node, start)
             print(f"Closed due to integrity : Node {node.ID}")
             node.delete()
             continue

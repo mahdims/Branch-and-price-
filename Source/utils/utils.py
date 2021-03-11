@@ -3,8 +3,37 @@ import numpy as np
 import math
 import pickle as Pick
 import random as rand
+import itertools as it
 import Real_Input
 from utils import Route_delivery as RD
+
+
+def calculate_the_obj(Data, Routes, RDPs):
+    Gc = Data.Gc
+    # create the mapping to find the node quantities  :))
+    Q_mapping = {}
+    for i in Gc.nodes:
+        for r_ID, route in enumerate(Routes):
+            if route.is_visit(i):
+                break
+        Q_mapping[i] = (r_ID, i)
+
+    part1 = 0
+    for i in Gc.nodes:
+        (r_ID, inx) = Q_mapping[i]
+        part1 += Gc.nodes[i]['demand'] - RDPs[r_ID][inx]
+
+    part2 = 0
+    for i, j in it.product(Gc.nodes, Gc.nodes):
+        (r_IDi, inxi) = Q_mapping[i]
+        (r_IDj, inxj) = Q_mapping[j]
+        part2 += abs(Gc.nodes[j]['demand']*RDPs[r_IDi][inxi] - Gc.nodes[i]['demand']*RDPs[r_IDj][inxj])
+
+    part2 = (Data.Lambda / Data.total_demand) * part2
+    part3 = 0
+    # part3 = Data.Gamma * (Data.Total_dis_epsilon - sum([r.travel_time for r in Routes])) / Data.R
+
+    return part1+part2+part3
 
 
 def edge_in_route(edge, route):
@@ -21,87 +50,79 @@ def edge_in_route(edge, route):
     return 0
 
 
-def avoid_edges_penalty(n1, n2, edges2avoid):
-    # This function checks if two seq can be placed
-    if edges2avoid:
-        if n2[0] in edges2avoid.keys():
-            if n1[-1] in edges2avoid[n2[0]]:
+def avoid_NR_check(route, seq, avoids):
+    # This function checks if seq can be placed in the route considering the avoid
+    # Return 1 if there is a violation (OW 0)
+    for i, j in avoids:
+        if seq[0] == i:
+            if route.is_visit(j):
                 return 1
-        if n1[-1] in edges2avoid.keys():
-            if n2[0] in edges2avoid[n1[-1]]:
+        elif seq[0] == j:
+            if route.is_visit(i):
                 return 1
     return 0
 
 
-def avoid_check_edge(avoid_list, route):
-    # This is a test function to check entire route and see if there is and avoid edge
-    new_avoid = avoid_list + [(j, i) for i, j in avoid_list]
-    pre_node = route[0]
-    for node in route[1:]:
-        if (pre_node, node) in new_avoid:
-            print(f"Edge {(pre_node, node)} should be avoided but its here \n {route}")
+def keep_NR_check(route, seq, keeps):
+    # Checks if seq can be in this route and return 1 if there is a violation
+    for i, j in keeps:
+        if seq[0] == i:
+            if not route.is_visit(j):
+                return 1
+
+        if seq[0] == j:
+            if not route.is_visit(i):
+                return 1
+
+    return 0
+
+
+def avoid_check(route, avoids):
+
+    for i, j in avoids:
+        if route.is_visit(i) and route.is_visit(j):
+            # print(f"Two nodes {i, j} should be avoided but its here \n {route.nodes_in_path}")
             return 0
-        pre_node = node
-    return 1
-
-
-def avoid_check(avoid_dict, route):
-    # This is a test function to check entire route and see if there is and avoid edge
-    new_avoid = set()
-    for key, val in avoid_dict["N"].items():
-        for v in val:
-            new_avoid.add((key, v))
-            new_avoid.add((v, key))
-
-    pre_seq = route[0]
-    for seq in route[1:]:
-        if (pre_seq[-1], seq[0]) in new_avoid:
-            print(f"Edge {(pre_seq, seq)} should be avoided but its here \n {route}")
-            return 0
-        pre_seq = seq
 
     return 1
 
 
-def keep_check(keep_dic, route):
+def keep_check(route, keeps):
 
-    for n1, n2 in keep_dic["E"]:
-        if route.is_visit(n1) and route.is_visit(n2):
-            if edge_in_route((n1, n2), route):
+    for i, j in keeps:
+        if route.is_visit(i) or route.is_visit(j):
+            if route.is_visit(i) and route.is_visit(j):
                 continue
             else:
-                print(f"Edge {(n1, n2)} is not in the route \n {route}")
+                # print(f"nodes {(i, j)} are not together in the route \n {route.nodes_in_path}")
                 return 0
 
-        elif route.is_visit(n1) and n1 != 0 and not route.is_visit(n2):
-            print(f" Node {n1} is in the route but there is no {n2} in \n {route} ")
-            return 0
-        elif route.is_visit(n2) and n2 != 0 and not route.is_visit(n1):
-            print(f" Node {n2} is in the route but there is no {n1} in \n {route} ")
-            return 0
     return 1
 
 
-def check_branching(col_dic, avoid, keep):
+def check_branching(Data, col_dic, avoid, keep):
 
-    flag_avoid = 1
     if avoid:
         # print("Start check the list of edges to avoid")
         # print(avoid)
         for r in col_dic.values():
-            flag_avoid = flag_avoid * avoid_check(avoid, r)
-    if not flag_avoid:
-        sys.exit("Avoided edge is used!!!")
+            if not avoid_check(r, avoid):
+                print(r)
+                sys.exit(f"Avoided is not correct!!! {avoid}")
 
-    flag_keep = 1
     if keep:
         # print("Start checking the keep edges")
         # print(keep)
         for r in col_dic.values():
-            flag_keep = flag_keep * keep_check(keep, r)
+            if not keep_check(r, keep):
+                print(r)
+                sys.exit(f"Keep is not correct!!! {keep}")
 
-    if not flag_keep:
-        sys.exit("Keep edge is not used!!!")
+    for r in col_dic.values():
+        r.feasibility_check(Data)
+        if not r.time_F:
+            print(f"The following route is time infeasible {r.travel_time}")
+            sys.exit(r)
 
 
 def build_the_route(Data, Edges=[], route=[]):
@@ -164,12 +185,13 @@ def spin(rw):
 
 
 def roul_wheel(dic):
-    slot_count = 0
-    for i in dic.keys():
-        slot_count = slot_count + dic[i]
+
+    TotalVal = sum(dic.values())
+    new_dic = {key: int(100 * val / TotalVal) for key, val in dic.items()}
+    slot_count = sum(new_dic.values())
 
     roulette_wheel = [0] * slot_count
-    for key, val in dic.items():
+    for key, val in new_dic.items():
         j = 0
         while j < val:
             t = rand.randint(0, slot_count - 1)
@@ -203,7 +225,7 @@ def data_preparation(Case_name, NN, M, inst):
             ins_type = "VTL"
             inst -= 20
         File_name = '%s_%s_%d' % (Case_name, ins_type, inst)
-        R_dic = read_object("./TObj_R_Kartal")
+        R_dic = read_object(f"./Data/{Case_name}/TObj_R_Kartal")
 
     Data = read_object(f'./Data/{Case_name}/{File_name}')
     R = R_dic[File_name]

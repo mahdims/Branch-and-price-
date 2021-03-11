@@ -64,12 +64,12 @@ def Get_the_Subtours(G, edges):
             break
 
     if subtours:
-        return list(min(subtours , key=lambda x :len(x))) # return minim length sub ture
+        return list(min(subtours, key=lambda x :len(x))) # return minim length sub ture
     else:
         return []
 
 
-def get_Duals(NN, RMP, edges2keep):
+def get_Duals(NN, RMP):
     AllMasterCons = RMP.getConstrs()
     AllDual = RMP.getAttr("Pi", AllMasterCons)
     linear = np.array(AllDual[0:(NN-1)*(NN-1)]).reshape((NN-1, NN-1)) #get_constraints(RMP, name='linear')
@@ -81,20 +81,20 @@ def get_Duals(NN, RMP, edges2keep):
     Inv = np.array(AllDual[Per_end+1])
     EdgK = {}
     Per_end += 2
-    if edges2keep["E"]:
-        for i, e in enumerate(edges2keep["E"]):
-            EdgK[e] = AllDual[Per_end:Per_end+len(edges2keep["E"])][i]
+    # if edges2keep["E"]:
+    #    for i, e in enumerate(edges2keep["E"]):
+    #        EdgK[e] = AllDual[Per_end:Per_end+len(edges2keep["E"])][i]
 
     sub_row = []
     # TODO I should check the correctness of the following Duals, is indexing correct?
     if RMP.getConstrByName("Subrow[0]"):
-        Per_end = Per_end + len(edges2keep["E"])
+        # Per_end = Per_end + len(edges2keep["E"])
         sub_row = np.array(AllDual[Per_end:])
         # print(f"Dual of the sub row cuts: {sub_row}")
     return [], linear, totaltime, visit, vehicle, Inv, EdgK, sub_row
 
 
-def Set_sub_obj(Data, R, Gc, dis, Duals, edges2keep, Sub):
+def Set_sub_obj(Data, R, Gc, dis, Duals, Sub):
     x, q, a, psi = Sub._varX, Sub._varQ, Sub._varA, Sub._varPsi
     NN = len(a) - 1
     (_, linear, totaltime, visit, vehicle, Inv, E_keep, sub_row) = Duals
@@ -106,11 +106,13 @@ def Set_sub_obj(Data, R, Gc, dis, Duals, edges2keep, Sub):
            - quicksum(a[i] * visit[i - 1] for i in Gc.nodes) \
            - quicksum(q) * (Inv + 1) - vehicle
 
+    '''
     for (i, j) in edges2keep["E"]:
         if i == 0:
             expr -= x[i, j] * E_keep[(i, j)]
         else:
             expr -= (x[i, j] + x[j, i]) * E_keep[(i, j)]
+    '''
 
     if Sub._varPsi:
         expr -= quicksum(psi[i] * sub_row[i] for i in psi.keys())
@@ -169,7 +171,7 @@ def Columns_with_negitive_costs(Data, R, Duals, Col_dic, cuts):
     return indicator, Col_dic, All_new_cols_IDs
 
 
-def Update_Master_problem(Gc, R, edges2keep, cuts, RMP, Col_dic, Col_ID, RDP_ID):
+def Update_Master_problem(Gc, R, cuts, RMP, Col_dic, Col_ID, RDP_ID):
 
     # Step 1 : see what is new about this column
     # step 2 : add the appropriate variable and index
@@ -204,9 +206,9 @@ def Update_Master_problem(Gc, R, edges2keep, cuts, RMP, Col_dic, Col_ID, RDP_ID)
     cons = RMP.getConstrByName("Inv")
     col.addTerms(sum(New_Route.RDP[RDP_ID]), cons)
     # edges 2 keep
-    for i, j in edges2keep["E"]:
-        cons = RMP.getConstrByName("edge2keep[%d,%d]" % (i, j))
-        col.addTerms(((i, j) in Selected_edges or (j, i) in Selected_edges)*1, cons)
+    # for i, j in edges2keep["E"]:
+    #    cons = RMP.getConstrByName("edge2keep[%d,%d]" % (i, j))
+    #    col.addTerms(((i, j) in Selected_edges or (j, i) in Selected_edges)*1, cons)
     # Sub-row constraint
     for inx, cut in enumerate(cuts):
         cut = list(cut[0])
@@ -248,7 +250,7 @@ def Get_alternative_sols(Data, dis, Sub):
     # this function will return second and more worse solution after solving the pricing MIP
     # get the sub-problem solution
     MIPSolutions = []
-    for sol_num in range(Sub.SolCount):
+    for sol_num in [0]: # range(Sub.SolCount):
         Sub.Params.SolutionNumber = sol_num
         Selected_edges = []
         for key, var in Sub._varX.items():
@@ -269,7 +271,7 @@ def Get_alternative_sols(Data, dis, Sub):
     return MIPSolutions
 
 
-def ColumnGen(Data, R, RMP, G_in, Col_dic, dis, edges2keep, edges2avoid, Sub, cuts):
+def ColumnGen(Data, R, RMP, G_in, Col_dic, dis, nodes2keep, nodes2avoid, Sub, cuts):
     Stoping_R_cost = -0.0099999991
     heuristic_path_value = -10
     global G, Gamma
@@ -283,7 +285,7 @@ def ColumnGen(Data, R, RMP, G_in, Col_dic, dis, edges2keep, edges2avoid, Sub, cu
     Solved_by_Heuristic = 0
     RMP_objvals.append(133)
     tail_counter = 0
-    while Subobj < Stoping_R_cost and tail_counter < 15:
+    while Subobj < Stoping_R_cost and tail_counter < 100:
         # Solve the Master problem
         # print("We are solving the Master")
         RMP.optimize() 
@@ -299,7 +301,7 @@ def ColumnGen(Data, R, RMP, G_in, Col_dic, dis, edges2keep, edges2avoid, Sub, cu
             tail_counter = 0
         RMP_objvals.append(RMP.objVal)
         # Get the dual variables
-        Duals = get_Duals(NN, RMP, edges2keep)
+        Duals = get_Duals(NN, RMP)
         # Solve Sub Problem
         # First search for the negative value columns and then  if you can not find any move on to the other approaches.
         # First we try the heuristics and then if the obj function found to be zero by then it is time to run
@@ -315,12 +317,12 @@ def ColumnGen(Data, R, RMP, G_in, Col_dic, dis, edges2keep, edges2avoid, Sub, cu
             if Heuristic_works: # Solve it with the heuristics
                 heuristic_paths = []
                 # First try to solve it with the heuristics and then if not a chance to find a solution
-                (Heuristic_works, heuristic_paths, heuristic_path_value) = PR.GRASP(Data, edges2keep, edges2avoid, Duals, R)
-                Solved_by_Heuristic = Heuristic_works
+                # (Heuristic_works, heuristic_paths, heuristic_path_value) = PR.GRASP(Data, nodes2keep, nodes2avoid, Duals, R)
+                Solved_by_Heuristic = Heuristic_works = 0
 
             if not Heuristic_works:  # Solve it with mathematical model
                 # Set the sub problem  objective
-                Sub = Set_sub_obj(Data, R, Gc, dis, Duals, edges2keep, Sub)
+                Sub = Set_sub_obj(Data, R, Gc, dis, Duals, Sub)
                 Sub.optimize(subtourelim)
                 Subobj = Sub.objVal
                 if Sub.status != 2: sys.exit("infeasible sub problem by model")
@@ -344,7 +346,7 @@ def ColumnGen(Data, R, RMP, G_in, Col_dic, dis, edges2keep, edges2avoid, Sub, cu
                 if 0 in Col_dic[Col_ID].nodes_in_path:
                     sys.exit("0 is in the path after changing the Qs-- col-gen ")
 
-                RMP = Update_Master_problem(Gc, R, edges2keep, cuts, RMP, Col_dic, Col_ID,RDP_ID)
+                RMP = Update_Master_problem(Gc, R, cuts, RMP, Col_dic, Col_ID,RDP_ID)
 
         elif Solved_by_Heuristic:
             for path in heuristic_paths:
@@ -360,7 +362,7 @@ def ColumnGen(Data, R, RMP, G_in, Col_dic, dis, edges2keep, edges2avoid, Sub, cu
                 else:
                     continue
                 # Update the master problem with new columns
-                RMP = Update_Master_problem(Gc, R, edges2keep, cuts, RMP, Col_dic, Col_ID, RDP_ID)
+                RMP = Update_Master_problem(Gc, R, cuts, RMP, Col_dic, Col_ID, RDP_ID)
 
         elif not we_found_cols: # Then it solved by sub problem mathematical model
             old_count = 0
@@ -383,7 +385,7 @@ def ColumnGen(Data, R, RMP, G_in, Col_dic, dis, edges2keep, edges2avoid, Sub, cu
                     if 0 in Col_dic[Col_ID].route[1:-1]:
                         sys.exit("0 is in the path because of the subproblem -- col-gen")
 
-                RMP = Update_Master_problem(Gc, R, edges2keep, cuts, RMP, Col_dic, Col_ID, RDP_ID)
+                RMP = Update_Master_problem(Gc, R, cuts, RMP, Col_dic, Col_ID, RDP_ID)
             # print(f"Out of {len(MIP_solutions)} columns {old_count} were already there.")
     # read the final selected Y variables
     if RMP.status != 2:

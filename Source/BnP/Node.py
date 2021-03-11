@@ -14,35 +14,6 @@ from BnP import Master_int, Cuts
 from utils import utils, Seq
 
 
-def calculate_the_obj(Data, R, Routes, RDPs):
-    Gc = Data.Gc
-    # create the mapping to find the node quantities  :))
-    Q_mapping = {}
-    for i in Gc.nodes:
-        for r_ID, route in enumerate(Routes):
-            inx = np.where(np.array(route.route) == i)[0]
-            if len(inx) != 0:
-                inx = inx[0]
-                break
-        Q_mapping[i] = (r_ID, inx)
-
-    part1 = 0
-    for i in Gc.nodes:
-        (r_ID, inx) = Q_mapping[i]
-        part1 += Gc.node[i]['demand'] - RDPs[r_ID][inx]
-
-    part2 = 0
-    for i, j in it.product(Gc.nodes, Gc.nodes):
-        (r_IDi, inxi) = Q_mapping[i]
-        (r_IDj, inxj) = Q_mapping[j]
-        part2 += abs(Gc.node[j]['demand']*RDPs[r_IDi][inxi] - Gc.node[i]['demand']*RDPs[r_IDj][inxj])
-
-    part2 = (Data.Lambda / Data.total_demand) * part2
-    part3 = Data.Gamma * (Data.Total_dis_epsilon - sum([r.travel_time for r in Routes])) / R
-
-    return part1+part2+part3
-
-
 class Node:
     best_Route = []
     best_RDP = []
@@ -57,7 +28,7 @@ class Node:
     NodeCount = 0
     Tree = nx.Graph()
     
-    def __init__(self, ID,  PID, level, pos, Col_dic, G, edge2keep={}, edge2avoid={}, cuts=[], Initial_RDP=None):
+    def __init__(self, ID,  PID, level, pos, Col_dic, G, nodes2keep={}, nodes2avoid={}, cuts=[], Initial_RDP=None):
         
         self.level = level
         self.ID = ID
@@ -65,12 +36,12 @@ class Node:
         self.pos = pos
         self.Col_dic = Col_dic
         self.G = copy.deepcopy(G)
-        self.edges2keep = edge2keep
-        self.edge2avoid = edge2avoid
+        self.nodes2keep = nodes2keep
+        self.nodes2avoid = nodes2avoid
         self.lower_bound = 0
         self.selected_R_D = []
         self.selected_route = []
-        self.feasible = self.check_G_feasibility()
+        self.feasible = 1
         self.Dis = Node.Data.distances
         self.Col_runtime = 0
         self.cuts = cuts
@@ -83,6 +54,12 @@ class Node:
                 # solve with column generation
                 self.solve()
                 # self.Upper_bound_finder()
+            else:
+                # @TODO If the initial alg can't find a feasible solution then run the subproblem to do so, it is unlikly
+                Sub = Sub_model.SubProblem(Node.Data, self.G, self.Dis, self.nodes2keep, self.nodes2avoid)
+                Duals =[]
+                Sub = CG.Set_sub_obj(Node.Data, Node.Data.R, None, Node.dis, Duals, Sub)
+
 
         # Extra information (Save the nodes and complete the tree fro drawings)
         Node.NodeCount += 1
@@ -101,8 +78,7 @@ class Node:
 
     def Run_initial_heuristic(self):
         # This function Generates some new R_D according to new dis (edges to avoid)
-        F_Sols, self.feasible = Alg.Initial_feasibleSol(Node.Data, self.Dis, edges2keep=self.edges2keep,
-                                           edges2avoid=self.edge2avoid)
+        F_Sols, self.feasible = Alg.Initial_feasibleSol(Node.Data, self.Dis, keeps=self.nodes2keep, avoids=self.nodes2avoid)
         new_routes = []
         if self.feasible:
             for sol in F_Sols:
@@ -129,9 +105,9 @@ class Node:
         # This function solves a node (integer relaxation) by column generation
 
         # Build the master problem
-        RMP = Master.MasterModel(Node.Data, self.Col_dic, Node.R, self.edges2keep)
+        RMP = Master.MasterModel(Node.Data, self.Col_dic, Node.R)
         # Build the sub-problem only the constraints and variables 
-        Sub = Sub_model.SubProblem(Node.Data, self.G, self.Dis, self.edges2keep, self.edge2avoid)
+        Sub = Sub_model.SubProblem(Node.Data, self.G, self.Dis, self.nodes2keep["E"], self.nodes2avoid["E"])
         # Add cuts from previous node in BnP tree
         RMP = Cuts.update_master_subrow_cuts(RMP, self.Col_dic, len(self.cuts), self.cuts)
         Sub = Cuts.update_subproblem_with_cuts(Sub, len(self.cuts), self.cuts)
@@ -139,9 +115,9 @@ class Node:
         start = time()
         while 1:
             self.feasible, RMP, self.lower_bound, self.Y, self.Col_dic = CG.ColumnGen(Node.Data, Node.R, RMP, self.G, self.Col_dic,
-                                                                           self.Dis, self.edges2keep, self.edge2avoid, Sub, self.cuts)
+                                                                           self.Dis, self.nodes2keep["E"], self.nodes2avoid["E"], Sub, self.cuts)
 
-            utils.check_branching(self.Col_dic, self.edge2avoid, self.edges2keep)
+            utils.check_branching(Node.Data, self.Col_dic, self.nodes2avoid["E"], self.nodes2keep["E"])
             if not self.feasible: break
             print(f"Current lowerbound in Node {self.ID}: {self.lower_bound}")
             # Add cuts
@@ -162,20 +138,18 @@ class Node:
     def Strong_Branching(self):
         # Find the branching rule
         Edge_Val = {}
-        # calculate the xij values ***** Not for   i--NN+1 ******
-        
-        for edge in self.G.edges():
-            if Node.Data.NN+1 not in edge: #Do not branch on i-NN+1 edges
-                Edge_Val[edge] = abs(sum([utils.edge_in_route(edge, self.Col_dic[Col_ID]) * self.Y[Col_ID, RDP_ID]
-                                          for Col_ID, RDP_ID in self.selected_R_D]) - 0.5)
+        # calculate the xij values ***** Not for   NN+1 and 0 ******
+        for i, j in Node.Data.Gc.edges():
+            Edge_Val[(i,j)] = abs(sum([self.Col_dic[Col_ID].is_visit(i) * self.Col_dic[Col_ID].is_visit(j) * self.Y[Col_ID, RDP_ID]
+                                      for Col_ID, RDP_ID in self.selected_R_D]) - 0.5)
 
-        # find the one with\ the minimum 
+        # find the one with the minimum
         
         while 1:
             selected_edge = min(Edge_Val, key=Edge_Val.get)
-            if selected_edge in self.edge2avoid["E"]:
+            if selected_edge in self.nodes2avoid["E"] or selected_edge[::-1] in self.nodes2avoid["E"]:
                 del Edge_Val[selected_edge]
-            elif selected_edge in self.edges2keep["E"]:
+            elif selected_edge in self.nodes2keep["E"] or selected_edge[::-1] in self.nodes2avoid["E"]:
                 del Edge_Val[selected_edge]
             else:
                 break
@@ -197,53 +171,38 @@ class Node:
         G = copy.deepcopy(self.G)
         
         if WhichNode == "left":
-
             # update the avoid edges
-            edge2avoid = copy.deepcopy(self.edge2avoid)
-            edge2avoid["E"].append((i, j))
-            for n1, n2 in [(i, j), (j, i)]:
-                if n1 in edge2avoid["N"].keys():
-                    edge2avoid["N"][n1].append(n2)
-                else:
-                    edge2avoid["N"][n1] = [n2]
-            # create the new seq list
-            Node.Data.All_seq, _ = Seq.Create_seq(Node.Data, self.edges2keep["N"])
+            nodes2avoid = copy.deepcopy(self.nodes2avoid)
 
-            # update the set columns by removing edge i-j or j-i
+            nodes2avoid, _ = update_avoid_keep(nodes2avoid, self.nodes2keep, i, j, key="avoid")
+
+            # update the set columns by removing routes that have both i anf j in it
             for inx, R_D in self.Col_dic.items():
-                if utils.edge_in_route((i, j), R_D):
+                if R_D.is_visit(i) and R_D.is_visit(j):
                     del Col_dic[inx]
 
             # update the graph as well
             G.remove_edge(i, j)
 
             return Node(Node.NodeCount, self.ID, self.level+1, WhichNode, Col_dic, G,
-                        cuts=self.cuts, edge2avoid=edge2avoid, edge2keep=self.edges2keep)
+                        cuts=self.cuts, nodes2avoid=nodes2avoid, nodes2keep=self.nodes2keep)
 
         elif WhichNode == "right":
 
             # update the keep edges
-            edges2keep = copy.deepcopy(self.edges2keep)
-            edges2keep["E"].append((i, j))
-            for n1, n2 in [(i, j), (j, i)]:
-                if n1 in edges2keep["N"].keys():
-                    edges2keep["N"][n1].append(n2)
-                else:
-                    edges2keep["N"][n1] = [n2]
+            nodes2keep = copy.deepcopy(self.nodes2keep)
+            nodes2avoid = copy.deepcopy(self.nodes2avoid)
+            nodes2avoid, nodes2keep = update_avoid_keep(nodes2avoid, nodes2keep, i, j, key="keep")
 
-            # create the new seq list
-            Node.Data.All_seq, _ = Seq.Create_seq(Node.Data, edges2keep["N"])
-
-            new_cols = {}  # keep the RD that have i-j or j-i Ot niether of them
+            new_cols = {}  # keep the RD that have i-j or j-i Ot neither of them
             for inx, R_D in Col_dic.items():
                 if R_D.is_visit(i) or R_D.is_visit(j):
-                    if utils.edge_in_route((i, j), R_D):  # check if it have either for i-j and j-i
-                        Updated_R_D, _ = utils.build_the_route(Node.Data, route=R_D.nodes_in_path)
-                        Updated_R_D.RDP = R_D.RDP
-                        new_cols[inx] = Updated_R_D
+
+                    if R_D.is_visit(i) and R_D.is_visit(j):
+                        new_cols[inx] = R_D
                     else:
-                        if i == 0 and not R_D.is_visit(j):  # If i is 0 and j is not in route
-                            new_cols[inx] = R_D
+                        pass
+
                 else:
                     # If the route do not have both i and j
                     new_cols[inx] = R_D
@@ -251,54 +210,12 @@ class Node:
             Col_dic = new_cols
 
             return Node(Node.NodeCount, self.ID, self.level+1, WhichNode, Col_dic, G,
-                        cuts=self.cuts, edge2avoid=self.edge2avoid, edge2keep=edges2keep)
-
-    def check_G_feasibility(self):
-        # This function performs some feasibility test on the graph
-
-        # if the graph is still connected
-        subturs = [c for c in sorted(nx.connected_components(self.G), key=len, reverse=True)]
-        if len(subturs) != 1:
-            # Graph became disconnected
-            return 0
-
-        # more then two must-visited-edges are connected to one node
-        G2 = nx.Graph()
-        G2.add_nodes_from(self.G.nodes())
-        for key, val in self.edges2keep.items():
-            for v in val:
-                G2.add_edge(key, v)
-
-        for i in G2.nodes():
-            if G2.degree(i) >= 3:
-                return 0
-
-        # the degree of depot node shouldn't be larger than number of vehicles
-        if G2.degree(0) > Node.Data.M:
-            return 0
-
-        # every cycle should have depot inside
-        cycles = nx.cycle_basis(G2)
-        for c in cycles:
-            if 0 not in c:
-                return 0
-
-        # there is no edge edge to branch
-        edgeset = list(self.G.edges())
-        for n in self.G.nodes:
-            if n != 0 and n != Node.Data.NN + 1:
-                edgeset.remove((n, Node.Data.NN + 1))
-        # print("Number of existed edges: %s" %(len(edgeset)-Node.Data.NN+1))
-
-        if not edgeset:
-            return 0
-
-        return 1
+                        cuts=self.cuts, nodes2avoid=nodes2avoid, nodes2keep=nodes2keep)
 
     def integer(self):
         # This function checks if all master problem variables are integer or not
         if self.feasible:
-            indictor = all( [self.Y[i] - int(self.Y[i]) < 0.00001 for i in self.Y.keys()] )
+            indictor = all([self.Y[i] - int(self.Y[i]) < 0.00001 for i in self.Y.keys()])
         else:
             indictor = False
 
@@ -344,31 +261,6 @@ class Node:
         Node.Node_dic2 = {}
         Node.NodeCount = 0
         Node.Tree = nx.Graph()
-
-    def Update_shortest_dis(self):
-        # @ TODO this function is not in use
-        # change the dis matrix to avoid deleted edges in initial heuristic
-        # This is needed for left nodes and the nodes under them
-        # We use bellman ford algorithm to find al pair short beasd on new Graph
-        # Dis=nx.all_pairs_bellman_ford_path_length(self.G,  weight='Travel_time')
-
-        paths = dict(nx.all_pairs_bellman_ford_path(self.G))
-        for i, j in it.combinations(self.G.node, 2):
-            path = paths[i][j]
-            travel_dis = 0
-            pernode = path.pop(0)
-            while len(path):
-                Cnode = path.pop(0)
-                travel_dis += self.G.edges[pernode, Cnode]["Travel_distance"]
-                pernode = Cnode
-            self.Dis[i, j] = travel_dis
-            self.Dis[j, i] = travel_dis
-
-    def Upper_bound_finder(self):
-        # @TODO I do not use this any more for two reasons
-        #  1- initial heuristic can find better solution
-        #  2- it is time consuming
-        self.Int_Objval, self.Int_route, self.Int_RDP = Master_int.Master_int(Data, R, Node.best_obj, self.Col_dic)
 
     @classmethod
     def Draw_the_tree(cls):
@@ -420,3 +312,46 @@ class Node:
         
         plt.show()
 
+
+def add_a_pair_to_dict(dic, i, j):
+
+    dic["E"].append((i, j))
+    for n1, n2 in [(i, j), (j, i)]:
+        if n1 in dic["N"].keys():
+            if n2 not in dic["N"][n1]:
+                dic["N"][n1].append(n2)
+        else:
+            dic["N"][n1] = [n2]
+
+    return dic
+
+
+def update_avoid_keep(avoid, keep, i, j, key):
+
+    if key == "avoid":
+
+        for k in keep["N"].get(i, []):
+            avoid = add_a_pair_to_dict(avoid, j, k)
+        for k in keep["N"].get(j, []):
+            avoid = add_a_pair_to_dict(avoid, i, k)
+
+        avoid = add_a_pair_to_dict(avoid, i, j)
+
+    elif key == "keep":
+
+        for k in keep["N"].get(j, []):
+            keep = add_a_pair_to_dict(keep, i, k)
+
+        for k in keep["N"].get(i, []):
+            keep = add_a_pair_to_dict(keep, j, k)
+            for h in keep["N"].get(j, []):
+                keep = add_a_pair_to_dict(keep, h, k)
+
+        for k in avoid["N"].get(i, []):
+            avoid = add_a_pair_to_dict(avoid, j, k)
+        for k in avoid["N"].get(j, []):
+            avoid = add_a_pair_to_dict(avoid, i, k)
+
+        keep = add_a_pair_to_dict(keep, i, j)
+
+    return avoid, keep

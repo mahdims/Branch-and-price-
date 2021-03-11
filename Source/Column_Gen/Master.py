@@ -3,7 +3,7 @@ import numpy as np
 from utils import utils
 
 
-def MasterModel(Data, Col_dic, R, edge2keep=None):
+def MasterModel(Data, Col_dic, R):
     M = Data.M
     Q = Data.Q
     G = Data.G
@@ -34,9 +34,9 @@ def MasterModel(Data, Col_dic, R, edge2keep=None):
     vehicle = RMP.addConstr(quicksum(y[r, q] for r, q in y.keys()) <= M, name="vehicle")
     Inv = RMP.addConstr(quicksum(y[r, q]*sum(Col_dic[r].RDP[q]) for r, q in y.keys()) <= G.nodes[0]['supply'], name="Inv")
 
-    if edge2keep["E"]:
-        edges = RMP.addConstrs((quicksum(y[r, q] * utils.edge_in_route(edge, Col_dic[r]) for r, q in y.keys()) == 1
-                                for edge in edge2keep["E"]), name="edge2keep")
+    # if edge2keep["E"]:
+    #    edges = RMP.addConstrs((quicksum(y[r, q] * utils.edge_in_route(edge, Col_dic[r]) for r, q in y.keys()) == 1
+    #                            for edge in edge2keep["E"]), name="edge2keep")
     
     RMP.write("Master0.lp")
     RMP.Params.OutputFlag = 0

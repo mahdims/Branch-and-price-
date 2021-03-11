@@ -1,7 +1,8 @@
 import copy
+import sys
 from gurobipy import *
 from utils import Route_delivery as RD
-
+from utils import utils
 # Class for solution of the initial heuristic (TabuRoute)
 
 
@@ -30,64 +31,109 @@ class Solution:
     def score_cal(self, alpha, beta):
         violated_time = 0
         violated_cap = 0
+        keep_avoid = 0
         for route in self.routes:
             route.feasibility_check(Solution.Data)
             violated_time += route.time_violation
             violated_cap += route.cap_violation
-
+            keep_avoid += route.keep_avoid_F
         self.time_F = violated_time == 0
-        self.time_F = self.time_F and self.total_time < Solution.Data.Total_dis_epsilon
         self.cap_F = violated_cap == 0
-        self.feasible = self.time_F and self.cap_F
-        self.score = self.obj + alpha * violated_time + beta * violated_cap
+        self.keep_avoid_F = keep_avoid == 0
+        self.feasible = self.time_F and self.cap_F and self.keep_avoid_F
+        self.score = self.obj + alpha * violated_time + beta * violated_cap + Solution.Data.Penalty * keep_avoid
 
-    def Find_the_route(self, seq):
+    def Find_the_route(self, seqs):
+        inx = set()
+        origin_seq = {}
+        if isinstance(seqs, list):
+            pass
+        else:
+            seqs = [seqs]
 
-        for i, r in enumerate(self.routes):
-            if r.is_visit(seq):
-                return i
+        for seq in seqs:
+            for i, r in enumerate(self.routes):
+                if r.is_visit(seq):
+                    origin_seq[seq] = i
+                    inx.add(i)
+        return origin_seq # list(inx)
 
     def Replace(self, route_inx, New_route):
         self.routes[route_inx] = New_route
 
-    def Best_insertion_cost(self, dis, alpha, beta, seq, org_route, des_route):
+    def Best_insertion(self, dis, alpha, beta, seqs, seqs_origin, des_route):
         # This function calculates the cost of inserting the seq into the des_path.
         # Re calculate the delivery quantities and create a new solution.
-        # using the greedy approach to place the seq in the route
-        routes = [r for id, r in enumerate(self.routes) if id != des_route and id != org_route]
+        # using the greedy approach to place the seq in the route]
+        flag = 1
+        All_seq_org = list(set(seqs_origin.values()))
+        routes = {id:r for id, r in enumerate(self.routes) if id != des_route and id not in All_seq_org}
+
+        for org in All_seq_org:
+            routes[org] = copy.deepcopy(self.routes[org])
+
+        if not isinstance(seqs, list):
+            seqs = [seqs]
+        else:
+            # we have some keeps members here
+            pass
 
         if des_route < len(self.routes):
-            new_route, flag = Greedy_insertion(dis, Solution.Data.Maxtour, self.routes[des_route], seq)
+            new_route = copy.deepcopy(self.routes[des_route])
+            for seq in seqs:
+
+                if not new_route.is_visit(seq):
+                    new_route, flag = Greedy_insertion(dis, Solution.Data.Maxtour, new_route, seq)
+
+                    if flag:
+                        routes[seqs_origin[seq]] = remove_seq_from_route(routes[seqs_origin[seq]], seq)
+                    else:
+                        break
         else:
             # A new route has to be created
             D0, D1 = Solution.Data.All_seq["D0"][-1], Solution.Data.All_seq["D1"][0]
-            new_route = RD.RouteDel([D0, seq, D1])
+            temp_list = [D0]
+            for seq in seqs:
+                temp_list.append(seq)
+                routes[seqs_origin[seq]] = remove_seq_from_route(routes[seqs_origin[seq]], seq)
+            try:
+                new_route = RD.RouteDel(temp_list + [D1])
+            except KeyError:
+                sys.exit(f"Line 100 Solution : \n {seqs}")
             flag = 1
 
         if flag:
-            routes.append(new_route)
-            # remove the seq from the org route
-            updated_org_route = copy.deepcopy(self.routes[org_route])
-            seq_inx = self.routes[org_route].route.index(seq)
-            updated_org_route.remove(inx=seq_inx)
-            if len(updated_org_route) <= 2:
-                pass
-            else:
-                routes.append(updated_org_route)
+            routes[des_route] = new_route
 
-            # create the new solution object
-            new_sol = Solution(routes, alpha, beta)
+            clean_route = []
+            for r in routes.values():
+                if len(r) <= 2:
+                    pass
+                else:
+                    clean_route.append(r)
+
+            # The new delivery quantities are calculated in Solution __init__
+            # The penalty for keep and avoid violation is added to the solution score
+            new_sol = Solution(clean_route, alpha, beta)
 
             return new_sol
 
         return self
 
 
+def remove_seq_from_route(route, seq):
+
+    inx = route.where(seq)
+    route.remove(inx=inx)
+
+    return route
+
+
 def Greedy_insertion(dis, Maxtour, tour, node):
     # best possible place to insert
     # Worst time complexity O(n**2)
     unable_2_route = []
-    best_cost = Maxtour
+    best_cost = float("inf")
     best_place = None
     # we go for all positions and penalties the avoid edges.
     for pos in range(len(tour) - 1):
@@ -106,32 +152,20 @@ def Greedy_insertion(dis, Maxtour, tour, node):
 
 def Optimal_quantity(Data, routes):
     Gc = Data.Gc
-    Quant = Model("Quantity assignment")
-    q = Quant.addVars(Gc.nodes, lb=0, name="q")
-    tp = Quant.addVars(Gc.nodes, Gc.nodes, lb=0, name="tp")
-    tn = Quant.addVars(Gc.nodes, Gc.nodes, lb=0, name="tn")
-
-    Quant.update()
-
-    Quant.setObjective(quicksum(
-        Gc.nodes[i]['demand'] - q[i] for i in Gc.nodes)
-                     + (Data.Lambda / Data.total_demand) * quicksum(tp[i, j] + tn[i, j] for i, j in tp.keys() ) )
-
-    linear = Quant.addConstrs((tp[i, j] - tn[i, j] +
-                             q[j] * Gc.nodes[i]['demand'] - q[i] * Gc.nodes[j]['demand'] == 0
-                             for i in Gc.nodes for j in Gc.nodes), name="linear")
-
-    Quant.addConstr(quicksum(q[i] for i in Gc.nodes) <= Data.G.nodes[0]['supply'])
-    Quant.addConstrs(quicksum(q[i] for i in route.nodes_in_path) <= Data.Q for route in routes)
-    Quant.addConstrs(q[i] <= Gc.nodes[i]['demand'] for i in Gc.nodes)
-    Quant.Params.OutputFlag = 0
-    Quant.optimize()
-
-    for route in routes:
+    Q = Data.Q
+    demand = {}
+    for inx, route in enumerate(routes):
         RDP = [0] * Data.NN
+        beta = Q/max(Q, sum([Gc.nodes[i]['demand'] for i in route.nodes_in_path]))
+        demand[inx] = [0] * Data.NN
         for i in route.nodes_in_path:
-            RDP[i] = q[i].x
-
+            RDP[i] = Gc.nodes[i]['demand'] * beta
+            demand[inx][i] = Gc.nodes[i]["demand"]
+        # print(f"Route {inx}: {sum(demand[inx])}")
+        # print([(RDP[i])/demand[inx][i] for i in range(Data.NN) if demand[inx][i] != 0])
         route.set_RDP(RDP)
-
-    return routes, Quant.objVal
+    # print(f"Ideal demand: {Data.total_demand/Data.M}")
+    RDPS = {i: routes[i].RDP[1] for i in range(len(routes))}
+    obj = utils.calculate_the_obj(Data, routes, RDPS)
+    # print(f"Route Q-obj: {obj}")
+    return routes, obj
