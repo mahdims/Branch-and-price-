@@ -21,7 +21,7 @@ if __name__ == "__main__":
         MaxTime = Time[NN]
         results = {}
         M = {60: 9, 30: 5, 15: 3, 13: 3}
-        for inst in range(2, 3):
+        for inst in [14]:
             Data, File_name = utils.data_preparation(Case_name, NN, M[NN], inst)
             Avg_results = []
             for ID in [1]:
@@ -37,5 +37,6 @@ if __name__ == "__main__":
 
             # print_the_solution(Bsolution)
             # utils.save_object(results, OWD + f"/Data/updated_results/{File_name}")
-            # save_object(results,'G:\My Drive\\1-PhD thesis\equitable relief routing\Code\%s\%s_BnPresult' %(Case_name,File_name) )
-    #save_object(R, "TObj_R_Kartal" )
+            # save_object(results,'.\%s\%s_BnPresult' %(Case_name,File_name))
+    # save_object(R, "TObj_R_Kartal" )
+

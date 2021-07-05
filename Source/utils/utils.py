@@ -4,7 +4,7 @@ import math
 import pickle as Pick
 import random as rand
 import itertools as it
-import Real_Input
+# import Real_Input
 from utils import Route_delivery as RD
 
 

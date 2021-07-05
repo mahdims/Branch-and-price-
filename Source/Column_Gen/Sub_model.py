@@ -4,6 +4,7 @@ import sys
 from itertools import *
 
 
+
 def SubProblem(Data, G, dis, nodes2keep=None, nodes2avoid=None):
     NN = Data.NN
     Q = Data.Q

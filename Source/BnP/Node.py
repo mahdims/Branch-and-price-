@@ -1,6 +1,7 @@
 from time import time
 import copy
 import sys
+import heapq
 import itertools as it
 import numpy as np
 import networkx as nx
@@ -41,7 +42,7 @@ class Node:
         self.lower_bound = 0
         self.selected_R_D = []
         self.selected_route = []
-        self.feasible = 1
+        self.feasible = self.feasibility_check()
         self.Dis = Node.Data.distances
         self.Col_runtime = 0
         self.cuts = cuts
@@ -55,10 +56,12 @@ class Node:
                 self.solve()
                 # self.Upper_bound_finder()
             else:
+                pass
+                self.feasible = 0
                 # @TODO If the initial alg can't find a feasible solution then run the subproblem to do so, it is unlikly
-                Sub = Sub_model.SubProblem(Node.Data, self.G, self.Dis, self.nodes2keep, self.nodes2avoid)
-                Duals =[]
-                Sub = CG.Set_sub_obj(Node.Data, Node.Data.R, None, Node.dis, Duals, Sub)
+                # Sub = Sub_model.SubProblem(Node.Data, self.G, self.Dis, self.nodes2keep, self.nodes2avoid)
+                # Duals =[]
+                # Sub = CG.Set_sub_obj(Node.Data, Node.Data.R, None, Node.dis, Duals, Sub)
 
 
         # Extra information (Save the nodes and complete the tree fro drawings)
@@ -76,9 +79,14 @@ class Node:
     def __repr__(self):
         return f"Node {self.ID}: LB: {round(self.lower_bound,2)} UB: {round(self.upper_bound, 2)}"
 
+    def __lt__(self, other):
+        return self.lower_bound < other.lower_bound
+
     def Run_initial_heuristic(self):
         # This function Generates some new R_D according to new dis (edges to avoid)
-        F_Sols, self.feasible = Alg.Initial_feasibleSol(Node.Data, self.Dis, keeps=self.nodes2keep, avoids=self.nodes2avoid)
+        NOS = 1 + (self.ID == 0)
+        F_Sols, F0_sol, self.feasible = Alg.Initial_feasibleSol(Node.Data, self.Dis, keeps=self.nodes2keep,
+                                                        avoids=self.nodes2avoid, number_of_sols=NOS)
         new_routes = []
         if self.feasible:
             for sol in F_Sols:
@@ -88,6 +96,10 @@ class Node:
                 new_routes += sol.routes
         else:
             print("Initial heuristic says Infeasible")
+
+        if F0_sol.obj < self.upper_bound:
+            self.upper_bound = F0_sol.obj
+            self.Int_route = F0_sol.routes
 
         # Add the newly generated columns to the Col_dic
         for R_D in new_routes:
@@ -140,7 +152,7 @@ class Node:
         Edge_Val = {}
         # calculate the xij values ***** Not for   NN+1 and 0 ******
         for i, j in Node.Data.Gc.edges():
-            Edge_Val[(i,j)] = abs(sum([self.Col_dic[Col_ID].is_visit(i) * self.Col_dic[Col_ID].is_visit(j) * self.Y[Col_ID, RDP_ID]
+            Edge_Val[(i, j)] = abs(sum([self.Col_dic[Col_ID].is_visit(i) * self.Col_dic[Col_ID].is_visit(j) * self.Y[Col_ID, RDP_ID]
                                       for Col_ID, RDP_ID in self.selected_R_D]) - 0.5)
 
         # find the one with the minimum
@@ -149,7 +161,7 @@ class Node:
             selected_edge = min(Edge_Val, key=Edge_Val.get)
             if selected_edge in self.nodes2avoid["E"] or selected_edge[::-1] in self.nodes2avoid["E"]:
                 del Edge_Val[selected_edge]
-            elif selected_edge in self.nodes2keep["E"] or selected_edge[::-1] in self.nodes2avoid["E"]:
+            elif selected_edge in self.nodes2keep["E"] or selected_edge[::-1] in self.nodes2keep["E"]:
                 del Edge_Val[selected_edge]
             else:
                 break
@@ -181,9 +193,6 @@ class Node:
                 if R_D.is_visit(i) and R_D.is_visit(j):
                     del Col_dic[inx]
 
-            # update the graph as well
-            G.remove_edge(i, j)
-
             return Node(Node.NodeCount, self.ID, self.level+1, WhichNode, Col_dic, G,
                         cuts=self.cuts, nodes2avoid=nodes2avoid, nodes2keep=self.nodes2keep)
 
@@ -212,6 +221,14 @@ class Node:
             return Node(Node.NodeCount, self.ID, self.level+1, WhichNode, Col_dic, G,
                         cuts=self.cuts, nodes2avoid=nodes2avoid, nodes2keep=nodes2keep)
 
+    def feasibility_check(self):
+        # This function checks if the keep and avoid can make the a node infeasible
+        for edge in self.nodes2keep["E"]:
+            if edge in self.nodes2avoid["E"] or edge[::-1] in self.nodes2avoid:
+                return 0
+
+        return 1
+
     def integer(self):
         # This function checks if all master problem variables are integer or not
         if self.feasible:
@@ -231,8 +248,10 @@ class Node:
 
     @classmethod
     def LB_UB_GAP_update(cls, stack, node, start):
-        if Node.LowerBound < node.lower_bound <= stack[0].lower_bound:
-            Node.LowerBound = node.lower_bound
+        smallest = heapq.nsmallest(1,stack)[0]
+        # if Node.LowerBound < smallest.lower_bound:
+        Node.LowerBound = smallest.lower_bound
+
         if node.upper_bound < Node.UpperBound:
             Node.UpperBound = node.upper_bound
             Node.time2UB = round(time() - start, 3)
@@ -315,19 +334,22 @@ class Node:
 
 def add_a_pair_to_dict(dic, i, j):
 
-    dic["E"].append((i, j))
-    for n1, n2 in [(i, j), (j, i)]:
-        if n1 in dic["N"].keys():
-            if n2 not in dic["N"][n1]:
-                dic["N"][n1].append(n2)
-        else:
-            dic["N"][n1] = [n2]
+    if i != j:
+        if (i,j) not in dic["E"] and (j,i) not in dic["E"]:
+            dic["E"].append((i, j))
+
+        for n1, n2 in [(i, j), (j, i)]:
+            if n1 in dic["N"].keys():
+                if n2 not in dic["N"][n1]:
+                    dic["N"][n1].append(n2)
+            else:
+                dic["N"][n1] = [n2]
 
     return dic
 
 
 def update_avoid_keep(avoid, keep, i, j, key):
-
+    # This function manage the implied branching
     if key == "avoid":
 
         for k in keep["N"].get(i, []):

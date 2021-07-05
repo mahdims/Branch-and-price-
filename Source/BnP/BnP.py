@@ -4,7 +4,7 @@ import numpy as np
 from utils import Seq, utils
 from BnP.Node import Node
 import os
-
+import heapq
 
 def print_routes(node):
 
@@ -61,6 +61,7 @@ def calculate_the_obj(Data, R, Routes, RDPs):
 
 
 def print_updates(start, Filename):
+    # @TODO please update the results saving directory when nessecary.
     # print(f"Open nodes : {len(stack)}")
     Elapsed_time = round(time.time() - start, 3)
     print("LB       // UB       // GAP   //Elapsed T // Time_2_best")
@@ -92,6 +93,7 @@ def branch_and_bound(Data, MaxTime, Filename):
     root = Node(0, 0, 0, "center", {}, Data.G, nodes2keep=nodes2keep, nodes2avoid=nodes2avoid)
     # Stack is the pool of feasible BnB nodes
     stack = [root]
+    heapq.heapify(stack)
     Node.LB_UB_GAP_update(stack, root, start)
 
     print("Start the BnP with root value %s" % Node.LowerBound)
@@ -102,14 +104,14 @@ def branch_and_bound(Data, MaxTime, Filename):
         return UB, LB, Gap, time2UB, Elapsed_time
 
     while len(stack) and Node.Gap >= 0.012 and Elapsed_time < MaxTime:
+
         Elapsed_time = round(time.time() - start, 3)
 
         print_updates(start, Filename)
 
         # best first search strategy
-        stack = sorted(stack, key=lambda x: x.lower_bound)
-        # print(stack[:4])
-        node = stack.pop(0)
+        print([round(n.lower_bound,3) for n in heapq.nsmallest(4, stack)])
+        node = heapq.heappop(stack)
 
         # Fathom by bound
         if node.lower_bound >= Node.UpperBound:
@@ -130,7 +132,7 @@ def branch_and_bound(Data, MaxTime, Filename):
             if not child.feasible:
                 print(f"Closed due to infeasiblity : Node {node.ID}")
             else:
-                stack.append(child)
+                heapq.heappush(stack, child)
                 Node.LB_UB_GAP_update(stack, child, start)
 
         # Node.Draw_the_tree()

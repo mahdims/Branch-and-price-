@@ -17,6 +17,7 @@ class Solution:
         self.time_F = 0
         self.cap_F = 0
         self.feasible = 0
+        self.feasible0= 0
         # Calculate the delivery quantity of all seq (by mathematical model) add to the RDP[1]
         self.routes, self.q_obj = Optimal_quantity(Solution.Data, routes)
         # Calculate the master objective value by for a total solution
@@ -40,6 +41,7 @@ class Solution:
         self.time_F = violated_time == 0
         self.cap_F = violated_cap == 0
         self.keep_avoid_F = keep_avoid == 0
+        self.feasible0 = self.time_F and self.cap_F
         self.feasible = self.time_F and self.cap_F and self.keep_avoid_F
         self.score = self.obj + alpha * violated_time + beta * violated_cap + Solution.Data.Penalty * keep_avoid
 

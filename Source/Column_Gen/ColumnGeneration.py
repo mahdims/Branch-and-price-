@@ -176,10 +176,6 @@ def Update_Master_problem(Gc, R, cuts, RMP, Col_dic, Col_ID, RDP_ID):
     # Step 1 : see what is new about this column
     # step 2 : add the appropriate variable and index
     New_Route = Col_dic[Col_ID]
-
-    if 0 in New_Route.nodes_in_path:
-        sys.exit("0 is in the path becuase of the subproblem-- update_Master ")
-
     Selected_edges = []
     pre_node = 0
     for next_node in New_Route.nodes_in_path:
@@ -285,10 +281,11 @@ def ColumnGen(Data, R, RMP, G_in, Col_dic, dis, nodes2keep, nodes2avoid, Sub, cu
     Solved_by_Heuristic = 0
     RMP_objvals.append(133)
     tail_counter = 0
+
     while Subobj < Stoping_R_cost and tail_counter < 100:
         # Solve the Master problem
         # print("We are solving the Master")
-        RMP.optimize() 
+        RMP.optimize()
         if RMP.status != 2:
             # Report that the problem in current node is infeasible
             print("Infeasible Master Problem")
@@ -330,7 +327,7 @@ def ColumnGen(Data, R, RMP, G_in, Col_dic, dis, nodes2keep, nodes2avoid, Sub, cu
 
                 Solved_by_Heuristic = 0
                 Heuristic_works = 1 # by default next time heuristic should be able to solve the problem
-                print("Sub Problem optimal value: %f" % Subobj)
+                #print("Sub Problem optimal value: %f" % Subobj)
 
         if heuristic_path_value > Stoping_R_cost:
             heuristic_path_value = -10
@@ -343,10 +340,7 @@ def ColumnGen(Data, R, RMP, G_in, Col_dic, dis, nodes2keep, nodes2avoid, Sub, cu
         if we_found_cols:
             for Col_ID, RDP_ID in All_new_cols_IDs:
                 # Update the master problem with new columns
-                if 0 in Col_dic[Col_ID].nodes_in_path:
-                    sys.exit("0 is in the path after changing the Qs-- col-gen ")
-
-                RMP = Update_Master_problem(Gc, R, cuts, RMP, Col_dic, Col_ID,RDP_ID)
+                RMP = Update_Master_problem(Gc, R, cuts, RMP, Col_dic, Col_ID, RDP_ID)
 
         elif Solved_by_Heuristic:
             for path in heuristic_paths:
@@ -363,6 +357,7 @@ def ColumnGen(Data, R, RMP, G_in, Col_dic, dis, nodes2keep, nodes2avoid, Sub, cu
                     continue
                 # Update the master problem with new columns
                 RMP = Update_Master_problem(Gc, R, cuts, RMP, Col_dic, Col_ID, RDP_ID)
+
 
         elif not we_found_cols: # Then it solved by sub problem mathematical model
             old_count = 0
@@ -382,10 +377,8 @@ def ColumnGen(Data, R, RMP, G_in, Col_dic, dis, nodes2keep, nodes2avoid, Sub, cu
                         # print("MIP found an old column")
                         continue
 
-                    if 0 in Col_dic[Col_ID].route[1:-1]:
-                        sys.exit("0 is in the path because of the subproblem -- col-gen")
+                    RMP = Update_Master_problem(Gc, R, cuts, RMP, Col_dic, Col_ID, RDP_ID)
 
-                RMP = Update_Master_problem(Gc, R, cuts, RMP, Col_dic, Col_ID, RDP_ID)
             # print(f"Out of {len(MIP_solutions)} columns {old_count} were already there.")
     # read the final selected Y variables
     if RMP.status != 2:

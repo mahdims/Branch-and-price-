@@ -186,15 +186,7 @@ def build_specific_route(Data, alpha, beta):
         new_routes.append(RD.RouteDel([D0] + [Data.All_seq[n][0] for n in r[1:-1]] + [D1]))
 
     new_sol = Solution(new_routes, alpha, beta)
-    D = np.array([Data.G.nodes[i]["demand"] for i in range(13)])
-    a = np.zeros(13)
-    demand = []
-    for r in new_sol.routes:
-        demand.append(sum(D[i[0]] for i in r[1:-1]))
-        a += np.array(r.RDP[1])
-    golden_coef = (D - a)/D
-    print(demand)
-    print(golden_coef)
+
     return new_sol
 
 
@@ -211,9 +203,11 @@ def TabuRoute(Data, dis, Pars, keeps, avoids, CurrentSol):
     alpha = Pars[8]
     beta = Pars[9]
 
+
     CurrentSol.score_cal(alpha, beta)
     BestSol = copy.deepcopy(CurrentSol)
     Best_F_Sol = copy.deepcopy(CurrentSol)
+    Best_F0_sol = copy.deepcopy(CurrentSol)
 
     tabu_list = {}
     No_Change_cont = 0
@@ -246,6 +240,10 @@ def TabuRoute(Data, dis, Pars, keeps, avoids, CurrentSol):
                 # test inserting the node to a possible path
 
                 P_Sol = CurrentSol.Best_insertion(dis, alpha, beta, v, origin_seq, r_id)
+                # before yoou do anything else pick  this solution
+                if P_Sol.feasible0 and P_Sol.obj < Best_F0_sol.obj:
+                    Best_F0_sol = copy.deepcopy(P_Sol)
+
                 # Check if the move is Tabu
                 if (v[0], r_id) in tabu_list.keys():
 
@@ -285,12 +283,14 @@ def TabuRoute(Data, dis, Pars, keeps, avoids, CurrentSol):
                 del tabu_list[i]
         it += 1
         if No_Change_cont >= 8:
-            print("------- Restart ------")
+            # print("------- Restart ------")
             CurrentSol = greedy_build(Data, dis, alpha, beta,flag="random")
             No_Change_cont = 0
 
     print('Iteration %d : Best F solution Obj = %s' % (it, Best_F_Sol.obj))
-    return Best_F_Sol
+    if Best_F0_sol.obj < Best_F_Sol.obj:
+        print(f"I found even better feasible solution with obj = {Best_F0_sol.obj}")
+    return Best_F_Sol, Best_F0_sol
 
 
 def build_a_random_sol(Data, dis, alpha, beta):
@@ -302,7 +302,7 @@ def build_a_random_sol(Data, dis, alpha, beta):
     return new_sol
 
 
-def Initial_feasibleSol(Data, dis, keeps, avoids):
+def Initial_feasibleSol(Data, dis, keeps, avoids, number_of_sols):
     Data.Penalty = max(dis.values()) * 10
     RD.RouteDel.nodes2keep = keeps["E"]
     RD.RouteDel.nodes2avoid = avoids["E"]
@@ -324,13 +324,15 @@ def Initial_feasibleSol(Data, dis, keeps, avoids):
     initial_Sol_count = 0
     no_success = 0
     new_sols = []
-    while initial_Sol_count < 1 and no_success < 50:
+    best_F0_sol = 0
+    while initial_Sol_count < number_of_sols and no_success < 5:
 
         new_sol = greedy_build(Data, dis,  alpha, beta)
         # new_sol = build_a_random_sol(Data, dis, alpha, beta)
         # new_sol = build_specific_route(Data, alpha, beta)
-        print(f"The initial solution {new_sol.score}")
-        new_sol = TabuRoute(Data, dis, pars, keeps, avoids, new_sol)
+        # print(f"The initial solution {new_sol.score}")
+        new_sol, good_sol = TabuRoute(Data, dis, pars, keeps, avoids, new_sol)
+
         # sys.exit(new_sol.routes)
         if new_sol.feasible:
             initial_Sol_count += 1
@@ -340,7 +342,11 @@ def Initial_feasibleSol(Data, dis, keeps, avoids):
             print(keeps)
             print("Avoids list")
             print(avoids)
-            input("Press any key to continue")
+            # input("Press any key to continue")
             no_success += 1
+        if best_F0_sol==0:
+            best_F0_sol = copy.deepcopy(good_sol)
+        elif good_sol.obj < best_F0_sol.obj:
+            best_F0_sol = copy.deepcopy(good_sol)
 
-    return new_sols, no_success < 50
+    return new_sols, best_F0_sol, no_success < 5
