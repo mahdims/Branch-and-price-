@@ -6,7 +6,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from math import sqrt, exp
 from Initial_Alg.Solution import Solution
-from Initial_Alg.Builder import greedy_build
+from Initial_Alg.Builder import greedy_build, CW
 from Initial_Alg import TSP_Solver
 from utils import Route_delivery as RD
 from utils import Seq, utils
@@ -287,9 +287,10 @@ def TabuRoute(Data, dis, Pars, keeps, avoids, CurrentSol):
             CurrentSol = greedy_build(Data, dis, alpha, beta,flag="random")
             No_Change_cont = 0
 
-    print('Iteration %d : Best F solution Obj = %s' % (it, Best_F_Sol.obj))
+    #print('Iteration %d : Best F solution Obj = %s Total time = %s ' % (it, Best_F_Sol.obj, Best_F_Sol.total_time))
     if Best_F0_sol.obj < Best_F_Sol.obj:
-        print(f"I found even better feasible solution with obj = {Best_F0_sol.obj}")
+        #print(f"I found even better feasible solution with obj = {Best_F0_sol.obj}")
+        pass
     return Best_F_Sol, Best_F0_sol
 
 
@@ -327,7 +328,8 @@ def Initial_feasibleSol(Data, dis, keeps, avoids, number_of_sols):
     best_F0_sol = 0
     while initial_Sol_count < number_of_sols and no_success < 5:
 
-        new_sol = greedy_build(Data, dis,  alpha, beta)
+        new_sol = CW(Data, dis, alpha, beta)
+        #new_sol = greedy_build(Data, dis,  alpha, beta)
         # new_sol = build_a_random_sol(Data, dis, alpha, beta)
         # new_sol = build_specific_route(Data, alpha, beta)
         # print(f"The initial solution {new_sol.score}")

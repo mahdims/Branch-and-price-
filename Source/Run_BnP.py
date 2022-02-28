@@ -23,6 +23,14 @@ if __name__ == "__main__":
         M = {60: 9, 30: 5, 15: 3, 13: 3}
         for inst in [14]:
             Data, File_name = utils.data_preparation(Case_name, NN, M[NN], inst)
+
+            # TEST
+            # Data.M = 4
+            # MQ = Data.M * Data.Q
+
+            # Supply = Data.G.nodes[0]["supply"]
+            # Data.Q = 10000
+            # END TEST
             Avg_results = []
             for ID in [1]:
                 print(f"We are solving {File_name}")

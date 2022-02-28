@@ -268,7 +268,7 @@ def Get_alternative_sols(Data, dis, Sub):
 
 
 def ColumnGen(Data, R, RMP, G_in, Col_dic, dis, nodes2keep, nodes2avoid, Sub, cuts):
-    Stoping_R_cost = -0.0099999991
+    Stoping_R_cost = -0.000099999991
     heuristic_path_value = -10
     global G, Gamma
     G = G_in
@@ -282,7 +282,7 @@ def ColumnGen(Data, R, RMP, G_in, Col_dic, dis, nodes2keep, nodes2avoid, Sub, cu
     RMP_objvals.append(133)
     tail_counter = 0
 
-    while Subobj < Stoping_R_cost and tail_counter < 100:
+    while Subobj < Stoping_R_cost and tail_counter < 1000000:
         # Solve the Master problem
         # print("We are solving the Master")
         RMP.optimize()
@@ -292,17 +292,17 @@ def ColumnGen(Data, R, RMP, G_in, Col_dic, dis, nodes2keep, nodes2avoid, Sub, cu
             sys.exit()
             return 0, RMP, Data.BigM, [], Col_dic
         # print("Master Problem Optimal Value: %f" %RMP.objVal)
-        if RMP_objvals[-1] * 0.95 <= RMP.objVal <= RMP_objvals[-1] * 1.05 and Solved_by_Heuristic==0 and we_found_cols ==0:
+        if RMP_objvals[-1] * 0.99 <= RMP.objVal <= RMP_objvals[-1] * 1.01 and Solved_by_Heuristic==0 and we_found_cols ==0:
             tail_counter += 1
         else:
             tail_counter = 0
         RMP_objvals.append(RMP.objVal)
         # Get the dual variables
         Duals = get_Duals(NN, RMP)
-        # Solve Sub Problem
-        # First search for the negative value columns and then  if you can not find any move on to the other approaches.
-        # First we try the heuristics and then if the obj function found to be zero by then it is time to run
+        # First search for the negative value columns and then if you can not find any, move on to the other approaches.
+        # Then we try the GRASP heuristic and then if the obj function found to be zero by then it is time to run
         # the optimal solver.
+
         # For each existing routes in the col set we calculate the delivery quantity by the heuristic approach.
         we_found_cols, Col_dic, All_new_cols_IDs = Columns_with_negitive_costs(Data, R, Duals, Col_dic, cuts)
         # RMP, Col_dic = Delete_the_unused_columns(RMP, Col_dic)
@@ -310,12 +310,13 @@ def ColumnGen(Data, R, RMP, G_in, Col_dic, dis, nodes2keep, nodes2avoid, Sub, cu
             Solved_by_Heuristic = 0
 
         if not we_found_cols or not Heuristic_works:
-
             if Heuristic_works: # Solve it with the heuristics
                 heuristic_paths = []
                 # First try to solve it with the heuristics and then if not a chance to find a solution
                 # (Heuristic_works, heuristic_paths, heuristic_path_value) = PR.GRASP(Data, nodes2keep, nodes2avoid, Duals, R)
-                Solved_by_Heuristic = Heuristic_works = 0
+                # We should change the following statement, it seems that this not working
+                Solved_by_Heuristic = 0
+                Heuristic_works = 0
 
             if not Heuristic_works:  # Solve it with mathematical model
                 # Set the sub problem  objective
@@ -327,7 +328,7 @@ def ColumnGen(Data, R, RMP, G_in, Col_dic, dis, nodes2keep, nodes2avoid, Sub, cu
 
                 Solved_by_Heuristic = 0
                 Heuristic_works = 1 # by default next time heuristic should be able to solve the problem
-                #print("Sub Problem optimal value: %f" % Subobj)
+                # print("Sub Problem optimal value: %f" % Subobj)
 
         if heuristic_path_value > Stoping_R_cost:
             heuristic_path_value = -10

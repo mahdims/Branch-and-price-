@@ -130,7 +130,8 @@ class Node:
                                                                            self.Dis, self.nodes2keep["E"], self.nodes2avoid["E"], Sub, self.cuts)
 
             utils.check_branching(Node.Data, self.Col_dic, self.nodes2avoid["E"], self.nodes2keep["E"])
-            if not self.feasible: break
+            if not self.feasible:
+                break
             print(f"Current lowerbound in Node {self.ID}: {self.lower_bound}")
             # Add cuts
             new_subrow_cuts = []

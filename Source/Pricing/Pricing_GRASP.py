@@ -12,29 +12,31 @@ from Pricing import Path
 def Make_it_compatible(edges2keep, edges2avoid):
     edges2keep_dic = {}
     edges2avoid_dic = {}
-    for i,j in edges2keep:
-        if i not in edges2keep_dic.keys():
-            edges2keep_dic[i] = [j]
-        else:
-            edges2keep_dic[i].append(j)
+    if edges2keep:
+        for i, j in edges2keep:
+            if i not in edges2keep_dic.keys():
+                edges2keep_dic[i] = [j]
+            else:
+                edges2keep_dic[i].append(j)
 
-        if j not in edges2keep_dic.keys():
-            edges2keep_dic[j] = [i]
-        else:
-            edges2keep_dic[j].append(i)
+            if j not in edges2keep_dic.keys():
+                edges2keep_dic[j] = [i]
+            else:
+                edges2keep_dic[j].append(i)
 
-    for i,j in edges2avoid:
-        if i not in edges2avoid_dic.keys():
-            edges2avoid_dic[i] = [j]
-        else:
-            edges2avoid_dic[i].append(j)
+    if edges2avoid:
+        for i,j in edges2avoid:
+            if i not in edges2avoid_dic.keys():
+                edges2avoid_dic[i] = [j]
+            else:
+                edges2avoid_dic[i].append(j)
 
-        if j not in edges2avoid_dic.keys():
-            edges2avoid_dic[j] = [i]
-        else:
-            edges2avoid_dic[j].append(i)
+            if j not in edges2avoid_dic.keys():
+                edges2avoid_dic[j] = [i]
+            else:
+                edges2avoid_dic[j].append(i)
 
-    return edges2keep_dic , edges2avoid_dic
+    return edges2keep_dic, edges2avoid_dic
 
 
 def Make_seq_compatible(seqs):
@@ -114,7 +116,7 @@ def Two_opt(route):
 
 
 def constructive_alg(Data, All_seq, S_local):
-    alpha = 0.2
+    alpha = 0.8
     any_luck = 0
     NN = Data.NN
     # Initiate the sequences by creating an string for all.
@@ -134,6 +136,7 @@ def constructive_alg(Data, All_seq, S_local):
     move_cost = 0
     while S_local.values() and any([a <= 0 for a in S_local.values()]):
         # find the vertex with maximum profit
+        # print([a for a in S_local.values()])
         Min_inx = min(S_local.keys(), key=lambda x: S_local[x])
         Min_S = S_local[Min_inx]
         # build the randomized set
@@ -247,7 +250,7 @@ def GRASP(Data, edges2keep, edges2avoid, Duals, R):
     NN = Data.NN
     All_seq = Make_seq_compatible(Data.All_seq)
     Path.Path.All_seq = All_seq
-    Path.Path.edges2keep, Path.Path.edges2avoid = Make_it_compatible(edges2keep["E"], edges2avoid["E"])
+    Path.Path.edges2keep, Path.Path.edges2avoid = Make_it_compatible(edges2keep, edges2avoid)
     Path.Path.Data = Data
     Path.Path.dis = Data.distances
     Path.Path.Duals = Duals
@@ -261,7 +264,8 @@ def GRASP(Data, edges2keep, edges2avoid, Duals, R):
         if key != (0,) and key != (NN + 1,):
             # Since it just used in constructive alg then we account for pi3 as well
             S[sec] = sum(
-                [-1*Path.Node_Value[i] * min(Data.G.nodes[i]["demand"], Data.Q) - Duals[3][i - 1] for i in sec.string if i != 0])
+                [-1*Path.Node_Value[i] - Duals[3][i - 1] for i in sec.string if i != 0])
+            #* min(Data.G.nodes[i]["demand"], Data.Q)
             # Adding the edge2keep duals
             for e in Pi6.keys():
                 if e[0] in sec.string and e[1] in sec.string:

@@ -3,6 +3,7 @@ import sys
 from gurobipy import *
 from utils import Route_delivery as RD
 from utils import utils
+from utils import Opt_delivery as OptD
 # Class for solution of the initial heuristic (TabuRoute)
 
 
@@ -17,7 +18,7 @@ class Solution:
         self.time_F = 0
         self.cap_F = 0
         self.feasible = 0
-        self.feasible0= 0
+        self.feasible0 = 0
         # Calculate the delivery quantity of all seq (by mathematical model) add to the RDP[1]
         self.routes, self.q_obj = Optimal_quantity(Solution.Data, routes)
         # Calculate the master objective value by for a total solution
@@ -155,19 +156,42 @@ def Greedy_insertion(dis, Maxtour, tour, node):
 def Optimal_quantity(Data, routes):
     Gc = Data.Gc
     Q = Data.Q
-    demand = {}
-    for inx, route in enumerate(routes):
-        RDP = [0] * Data.NN
-        beta = Q/max(Q, sum([Gc.nodes[i]['demand'] for i in route.nodes_in_path]))
-        demand[inx] = [0] * Data.NN
-        for i in route.nodes_in_path:
-            RDP[i] = Gc.nodes[i]['demand'] * beta
-            demand[inx][i] = Gc.nodes[i]["demand"]
-        # print(f"Route {inx}: {sum(demand[inx])}")
-        # print([(RDP[i])/demand[inx][i] for i in range(Data.NN) if demand[inx][i] != 0])
-        route.set_RDP(RDP)
-    # print(f"Ideal demand: {Data.total_demand/Data.M}")
+    C = Data.G.nodes[0]["supply"]
+    C_remain = C
+    r_demand = [sum([Gc.nodes[i]['demand'] for i in r.nodes_in_path]) for r in routes]
+    un_decided = [i for i in range(len(routes))]
+    while len(un_decided) !=0:
+        vio_route = []
+        Beta = C_remain / max(C_remain, sum([r_demand[r_inx] for r_inx in un_decided]))
+        for r_inx in un_decided:
+            if Beta * r_demand[r_inx] > Q:
+                vio_route.append(r_inx)
+
+        if len(vio_route) == 0:
+            for r_inx in un_decided:
+                RDP = [0] * Data.NN
+                for i in routes[r_inx].nodes_in_path:
+                    RDP[i] = round(Gc.nodes[i]['demand'] * Beta, 10)
+                routes[r_inx].set_RDP(RDP)
+            break
+        else:
+            for r_inx in vio_route:
+                beta_K = Q / r_demand[r_inx]
+                RDP = [0] * Data.NN
+                for i in routes[r_inx].nodes_in_path:
+                    RDP[i] = round(Gc.nodes[i]['demand'] * beta_K, 10)
+                routes[r_inx].set_RDP(RDP)
+                un_decided.remove(r_inx)
+                C_remain -= Q
+
+        # print(f"Ideal demand: {Data.total_demand/Data.M}")
     RDPS = {i: routes[i].RDP[1] for i in range(len(routes))}
     obj = utils.calculate_the_obj(Data, routes, RDPS)
-    # print(f"Route Q-obj: {obj}")
+
+    #D_rate = {}
+    #D_sum = []
+    #for i, r in RDPS.items():
+    #    D_rate[i] = [n/Data.G.nodes[j]["demand"] for j, n in enumerate(r) if j != 0]
+    #    D_sum.append(sum(r))
+
     return routes, obj

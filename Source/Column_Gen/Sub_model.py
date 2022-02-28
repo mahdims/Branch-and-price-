@@ -33,6 +33,8 @@ def SubProblem(Data, G, dis, nodes2keep=None, nodes2avoid=None):
     Sub.addConstr(quicksum(x.select("*", NN+1)) == 1)
     Sub.addConstrs(quicksum(x.select("*", i)) == quicksum(x.select(i, "*")) for i in Gc.nodes)
     Sub.addConstrs(quicksum(x.select(i, "*")) == a[i] for i in G.nodes)
+    Sub.addConstrs( q[i] *G.nodes[j]['demand'] <= q[j] * G.nodes[i]['demand'] + G.nodes[i]['demand'] * G.nodes[j]['demand'] *(1-a[j]) for i in Gc.nodes for j in Gc.nodes)
+    Sub.addConstr(quicksum(G.nodes[i]['demand']*a[i] for i in Gc.nodes) *(G.nodes[0]['supply'] / Data.total_demand) <= quicksum(q))
     Sub.addConstrs(q[i] <= G.nodes[i]['demand']*a[i] for i in Gc.nodes)
     Sub.addConstr(quicksum(q) <= Q)
     Sub.Params.OutputFlag = 0

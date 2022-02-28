@@ -77,7 +77,7 @@ def select_starting_edge(depot_list):
 
 
 def Create_seq(Data, edges2keep):
-    # This function will figure out the sequences real node sequences
+    # This function will figure out the real node sequences
     # All_seq has three category of nodes "D0" the depot and "N" normal nodes and "D1" the auxilary depot
     # note that "D0" can have more than one member
     Sequence.G = Data.G
@@ -114,7 +114,7 @@ def Create_seq(Data, edges2keep):
             All_seq[a] = [Sequence([a])]
 
     All_seq["D0"].append(Sequence([0]))
-    All_seq["D1"] = [ Sequence([Data.NN + 1])]
+    All_seq["D1"] = [Sequence([Data.NN + 1])]
 
     return All_seq, Connected_list
 

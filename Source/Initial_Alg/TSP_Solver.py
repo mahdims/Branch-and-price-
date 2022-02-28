@@ -2,6 +2,7 @@ import numpy as np
 import sys
 # from Other_TSP_solvers import TSP_model, TSP_concorde, LKH3
 
+# from Other_TSP_solvers import LKH3
 
 def nearest_neighbor(dist_matrix, nodes, start=None):
     # Create a customer sequence by Nearest Neighbor algorithm
@@ -148,7 +149,7 @@ def solve(e_ttime, Nodes, start=None, end=None):
         pass
         # the concorde wrapper should be downloaded from and installed
         # route, objval = TSP_concorde(e_ttime, Nodes, start, end)
-    elif 0:
+    elif 1:
         pass
         # the LKH3 should be downloaded, make and placed in LKH folder
         # route, objval = LKH3(e_ttime, Nodes, start, end)

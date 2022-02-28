@@ -110,7 +110,7 @@ def branch_and_bound(Data, MaxTime, Filename):
         print_updates(start, Filename)
 
         # best first search strategy
-        print([round(n.lower_bound,3) for n in heapq.nsmallest(4, stack)])
+        print([(n.level, round(n.lower_bound,3)) for n in heapq.nsmallest(4, stack)])
         node = heapq.heappop(stack)
 
         # Fathom by bound

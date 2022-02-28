@@ -24,9 +24,9 @@ def MasterModel(Data, Col_dic, R):
                     + (Lambda/TotalD) * quicksum(tp[i, j]+tn[i, j] for i, j in tp.keys())
                     + (Gamma / R) * (Data.Total_dis_epsilon - quicksum(Col_dic[r].travel_time*y[r, q] for r, q in y.keys())))
 
-    linear = RMP.addConstrs((tp[i, j]-tn[i, j]+
-        quicksum(Col_dic[r].RDP[q][i]*y[r, q]*G.nodes[j]['demand'] for r, q in y.keys())
-        - quicksum(Col_dic[r].RDP[q][j]*y[r, q]*G.nodes[i]['demand'] for r, q in y.keys()) == 0
+    linear = RMP.addConstrs((tp[i, j]-tn[i, j]
+                + quicksum(Col_dic[r].RDP[q][i]*y[r, q]*G.nodes[j]['demand'] for r, q in y.keys())
+                - quicksum(Col_dic[r].RDP[q][j]*y[r, q]*G.nodes[i]['demand'] for r, q in y.keys()) == 0
                              for i in Gc.nodes for j in Gc.nodes), name="linear")
     
     TotalTime = RMP.addConstr(quicksum(y[r, q]*Col_dic[r].travel_time for r, q in y.keys()) <= Data.Total_dis_epsilon, name="Total_time")
