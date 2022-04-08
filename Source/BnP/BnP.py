@@ -6,6 +6,7 @@ from BnP.Node import Node
 import os
 import heapq
 
+
 def print_routes(node):
 
     if node:
@@ -87,7 +88,7 @@ def branch_and_bound(Data, MaxTime, Filename):
     nodes2avoid = {"N": {}, "E": []}
 
     # Find the initial Columns
-    Data.All_seq, _ = Seq.Create_seq(Data, {})
+    Data.All_seq, _, _ = Seq.Create_seq(Data, {})
 
     # make the root node
     root = Node(0, 0, 0, "center", {}, Data.G, nodes2keep=nodes2keep, nodes2avoid=nodes2avoid)
@@ -121,7 +122,7 @@ def branch_and_bound(Data, MaxTime, Filename):
 
         # Fathom by integrity
         if node.integer():
-            Node.LB_UB_GAP_update(node, start)
+            Node.LB_UB_GAP_update(stack, node, start)
             print(f"Closed due to integrity : Node {node.ID}")
             node.delete()
             continue

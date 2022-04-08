@@ -80,6 +80,7 @@ def Create_seq(Data, edges2keep):
     # This function will figure out the real node sequences
     # All_seq has three category of nodes "D0" the depot and "N" normal nodes and "D1" the auxilary depot
     # note that "D0" can have more than one member
+    flag_circle = 0
     Sequence.G = Data.G
     Sequence.Data = Data
     All_seq = {}
@@ -96,10 +97,17 @@ def Create_seq(Data, edges2keep):
             for n in node_sets:
                 if len(edges2keep[n]) == 1:
                     end_points.append(n)
+            # if there is not two endpoints then the keep edges creates a circle which make the problem infeasible
+            if len(end_points) != 2:
+                flag_circle = 1
+                return All_seq, Connected_list, not flag_circle
             Connected_list[inx] = list(nx.all_simple_paths(Con_G, end_points[0], end_points[1]))[0]
     # Build all of the sequences.
     All_seq["D0"] = []
     for a in Connected_list:
+        if len(a) == 2:
+            a = sorted(a)
+
         if 0 not in a:
             All_seq[tuple(a)] = [Sequence(a)]
             All_seq[tuple(a)].append(Sequence(a[::-1]))
@@ -116,5 +124,5 @@ def Create_seq(Data, edges2keep):
     All_seq["D0"].append(Sequence([0]))
     All_seq["D1"] = [Sequence([Data.NN + 1])]
 
-    return All_seq, Connected_list
+    return All_seq, Connected_list, not flag_circle
 

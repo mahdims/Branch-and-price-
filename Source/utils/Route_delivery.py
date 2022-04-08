@@ -13,24 +13,26 @@ class RouteDel:
     Data = []
     dis = []
 
-    def __init__(self, route):
+    def __init__(self, route, creator):
         self.route = route
         # I trust that sequence of nodes in path is correct (calculated by build_nodes)
         self.nodes_in_path = []
         self.build_nodes()
         # calculate the travel time inplace
         self.travel_time = 0
-        self.calc_time(dis)
         # We don't update the deliveris yet
         self.RDP = {}
         self.total_deliveries = 0
-        # the four below attr calculated in feasibility_check
+        self.violated_keeps = utils.keep_check(self, RouteDel.nodes2keep)
+        self.violated_avoids = utils.avoid_check(self, RouteDel.nodes2avoid)
         self.cap_violation = None
         self.time_violation = None
         self.cap_F = None
         self.time_F = None
-        self.keep_avoid_F = 0
+        self.keep_avoid_F = 1
         self.feasibility_check(RouteDel.Data)
+        self.creator = creator
+        self.calc_time(dis)
 
     def __len__(self):
         return len(self.route)
@@ -57,15 +59,15 @@ class RouteDel:
         for n_inx, n in enumerate(self.route[1:-1]):
             self.travel_time += dis[PreNode[-1], n[0]] + n.string_time
             PreNode = n
-        # self.travel_time += RouteDel.Data.Penalty * (1 - utils.avoid_check(self, RouteDel.nodes2avoid))
-        # self.travel_time += RouteDel.Data.Penalty * (1 - utils.keep_check(self, RouteDel.nodes2keep))
+        self.travel_time += RouteDel.Data.Penalty * (len(self.violated_keeps))
+        self.travel_time += RouteDel.Data.Penalty * (len(self.violated_avoids))
 
     def feasibility_check(self, Data):
         self.time_violation = max(0, self.travel_time - Data.Maxtour)
         self.time_F = self.time_violation == 0
         self.cap_violation = max(0, round(self.total_deliveries, 0) - Data.Q)
         self.cap_F = self.cap_violation == 0
-        self.keep_avoid_F = 2 - utils.avoid_check(self, RouteDel.nodes2avoid) - utils.keep_check(self, RouteDel.nodes2keep)
+        self.keep_avoid_F = len(self.violated_keeps) == 0 and len(self.violated_avoids) == 0
 
     def where(self, node):
         if isinstance(node, Seq.Sequence):
@@ -77,51 +79,64 @@ class RouteDel:
     def is_visit(self, sq):
         try:
             if isinstance(sq, Seq.Sequence):
-                for r_seq in self.route:
+                for inx, r_seq in enumerate(self.route):
                     if sq.string == r_seq.string:
-                        return 1
+                        return inx
             else:
-                if sq in self.nodes_in_path:
-                    return 1
-                elif sq == 0:
-                    return 1
+                for inx, node in enumerate(self.nodes_in_path):
+                    if sq == node:
+                        return inx
+
+                if sq == 0:
+                    return 0
         except :
             print("Stop at is visit !! ")
             sys.exit(self.route)
 
-        return 0
+        return -1
 
     def insertion_time(self, dis, i, p):
         # the total route time change with inserting seq p in location i (add penalty Data.Maxtour if avoid edges)
         try:
-            time = dis[self.route[i][-1], p[0]] + dis[p[-1], self.route[i + 1][0]] \
-                   + p.string_time - dis[self.route[i][-1], self.route[i + 1][0]]
+            time = dis[self.route[i][-1], p[0]] +\
+                   dis[p[-1], self.route[i + 1][0]] +\
+                   p.string_time -\
+                   dis[self.route[i][-1], self.route[i + 1][0]]
         except:
             sys.exit((self.route[i], self.route[i + 1], p))
 
-        '''
-        feasibility = 0 
-        # Adding the penalty cost for avoid and violation of keeps
-        if utils.avoid_NR_check(self, p, RouteDel.nodes2avoid):
-            feasibility += 1
-            # time += RouteDel.Data.Penalty
-        if utils.keep_NR_check(self, p, RouteDel.nodes2keep):
-            feasibility += 1
-            # time += RouteDel.Data.Penalty
+        fitness = time
+        # calculate the penalty change if p is inserted in i
+        # Adding/removing the penalty cost for avoid and violation of keeps
+        new_avoid = utils.avoid_check(self, RouteDel.nodes2avoid, p, i)
+        if new_avoid["Add"]:
+            fitness += RouteDel.Data.Penalty * len(new_avoid["Add"])
+        if new_avoid["Remove"]:
+            fitness -= RouteDel.Data.Penalty * len(new_avoid["Remove"])
+        new_keep = utils.keep_check(self, RouteDel.nodes2keep, p, i)
+        if new_keep["Add"]:
+            fitness += RouteDel.Data.Penalty * len(new_keep["Add"])
+        if new_keep["Remove"]:
+            fitness += RouteDel.Data.Penalty * len(new_keep["Remove"])
 
-        # deduce the penalty if you add a keep together
-        if not utils.keep_NR_check(self, p, RouteDel.nodes2keep) and any(p[0] in e for e in RouteDel.nodes2keep):
-            feasibility -= 1
-            # time -= RouteDel.Data.Penalty
-        '''
-
-        return time
+        return fitness, time
 
     def insert(self, i, seq, move_time):
-        # will operate the insertion
-
         # Update the cost
         self.travel_time += move_time
+
+        # Update the violated keeps and avoids
+        new_avoid = utils.avoid_check(self, RouteDel.nodes2avoid, seq, i)
+        for e in new_avoid["Add"]:
+            self.violated_avoids.append(e)
+        for e in new_avoid["Remove"]:
+            self.violated_avoids.remove(e)
+        new_keep = utils.keep_check(self, RouteDel.nodes2keep, seq, i)
+        for e in new_keep["Add"]:
+            self.violated_keeps.append(e)
+        for e in new_keep["Remove"]:
+            self.violated_keeps.remove(e)
+
         # The REAL insertion
         self.route.insert(i + 1, seq)
         # Update the nodes_in_path
@@ -137,6 +152,10 @@ class RouteDel:
 
         # Update the nodes_in_path
         self.build_nodes()
+        # update the voilateds
+        self.violated_keeps = utils.keep_check(self, RouteDel.nodes2keep)
+        self.violated_avoids = utils.avoid_check(self, RouteDel.nodes2avoid)
+
         # Update the travel time of route
         self.calc_time(dis)
         self.feasibility_check(RouteDel.Data)

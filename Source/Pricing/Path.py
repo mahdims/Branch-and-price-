@@ -1,10 +1,12 @@
 import numpy as np
 import networkx as nx
-from utils import Seq
+import sys
 
 
 # This is the path object for use in pricing heuristics
 class Path:
+    R = 0
+    All_seq = []
     edges2keep = None
     edges2avoid = None
     Connected_list = None
@@ -31,10 +33,9 @@ class Path:
                         # we should add a huge penalty to the value
                         penalty2value = 1
 
-
             PreNode = n
 
-        self.q = Quantities_assignment(Path.Data, Node_Value, self.nodes_in_path)
+        self.q = Quantities_assignment_new(Path.Data, Path.Node_Value, self.nodes_in_path)
         self.value = self.Calculating_path_value()
         if penalty2value:
             self.value += Path.Data.BigM_dis
@@ -44,6 +45,18 @@ class Path:
             if v in a.string:
                 return inx
         return None
+
+    def check_if_all_have_del(self):
+        for n in self.nodes_in_path:
+            if self.q[n - 1] == 0.0:
+                print("We found a node without delivery")
+
+        Real_nodes_in_path = list(set(self.path[0].string) - set([0]))
+        for n in self.path[1:-1]:
+            Real_nodes_in_path += n.string
+
+        if set(Real_nodes_in_path) != set(self.nodes_in_path):
+            print("Problem with updating nodes_in_path in GRASP")
 
     def Calculating_path_value(self):
         gamma = Path.Data.Gamma
@@ -57,11 +70,11 @@ class Path:
 
         a_var = np.zeros(Path.Data.NN - 1)
         if self.nodes_in_path:
-            a_var[np.array(self.nodes_in_path)-1] = 1
+            a_var[np.array(self.nodes_in_path) - 1] = 1
 
-        Value = sum((-Pi1.dot(d) + d.dot(Pi1))*self.q) - self.path_time * (Pi2 + gamma / Path.R) - Pi3.dot(a_var) \
-                - Pi4 - (Pi5 + 1) * sum(self.q)
-        # the dual variabls added because of the edges 2 keep
+        Value = sum((-Pi1.dot(d) + d.dot(Pi1)) * self.q) - self.path_time * (Pi2 + gamma / Path.R) - Pi3.dot(a_var) \
+            - Pi4 - (Pi5 + 1) * sum(self.q)
+        # the dual variables added because of the edges 2 keep
         for e in Pi6.keys():
             inx = self.where_in_path(e[0])
             if inx is not None:
@@ -72,9 +85,9 @@ class Path:
 
     def insertion_time(self, i, p):
         time = Path.dis[self.path[i].string[-1], p.string[0]] + Path.dis[p.string[-1], self.path[i + 1].string[0]] \
-                   + p.string_time - Path.dis[self.path[i].string[-1], self.path[i + 1].string[0]]
+               + p.string_time - Path.dis[self.path[i].string[-1], self.path[i + 1].string[0]]
 
-        # Adding the penalty cost for having an avoid ing edge
+        # Adding the penalty cost for having an avoided edge
         if p.string[0] in Path.edges2avoid.keys():
             if self.path[i].string[-1] in Path.edges2avoid[p.string[0]]:
                 time += Path.Data.BigM_dis
@@ -89,7 +102,7 @@ class Path:
         Candidate_dic = {}
         # create the candidate set for insertion
         CL = list(range(len(self.path) - 1))
-        # eliminate the avoid nodes from candidate set
+        # eliminate the avoided nodes from candidate set
         if v.string[0] in Path.edges2avoid.keys():
             for avoid in Path.edges2avoid[v.string[0]]:
                 inx = self.where_in_path(avoid)
@@ -101,10 +114,10 @@ class Path:
             for avoid in Path.edges2avoid[v.string[-1]]:
                 inx = self.where_in_path(avoid)
                 if inx is not None:
-                    if self.path[inx+1].string[0] == avoid:
-                        try: # I am not sure about this
+                    if self.path[inx + 1].string[0] == avoid:
+                        try:  # I am not sure about this
                             CL.remove(inx)
-                        except:
+                        except KeyError:
                             pass
 
         for i in CL:
@@ -127,17 +140,17 @@ class Path:
         self.nodes_in_path = self.nodes_in_path + seq.string
         # Update the path value
         self.value = move_value
-        # The REAL inseartion
+        # The REAL insertion
         self.path.insert(inx + 1, seq)
         # Update the quantities
-        self.q = Quantities_assignment(Path.Data, Node_Value, self.nodes_in_path)
+        self.q = Quantities_assignment_new(Path.Data, Path.Node_Value, self.nodes_in_path)
 
     def exchange_time(self, i, outward, inward):
         out = - outward.string_time + inward.string_time \
-              - (Path.dis[self.path[i - 1].string[-1], outward.string[0]] + \
+              - (Path.dis[self.path[i - 1].string[-1], outward.string[0]] +
                  Path.dis[outward.string[-1], self.path[i + 1].string[0]]) + \
-                (Path.dis[self.path[i - 1].string[-1], inward.string[0]] + \
-                 Path.dis[inward.string[-1], self.path[i + 1].string[0]])
+              (Path.dis[self.path[i - 1].string[-1], inward.string[0]] +
+               Path.dis[inward.string[-1], self.path[i + 1].string[0]])
 
         return out
 
@@ -151,53 +164,49 @@ class Path:
         Pi4 = np.array(Path.Duals[4])
         Pi5 = np.array(Path.Duals[5])
         Pi6 = Path.Duals[6]
-        a_var = np.zeros(Path.Data.NN-1)
+        a_var = np.zeros(Path.Data.NN - 1)
 
-        if outward: # it is an exchange
-            #sec_set = copy.copy(self.path)
-            #sec_set.remove(outward)
-            #sec_set += [inward]
+        if outward:  # it is an exchange
             new_node_list = self.nodes_in_path + inward.string
             for a in set(outward.string):
                 new_node_list.remove(a)
-            NewQ = Quantities_assignment(self.Data, Node_Value, new_node_list)
+            NewQ = Quantities_assignment_new(self.Data, Path.Node_Value, new_node_list)
             Total_time = self.path_time + self.exchange_time(i, outward, inward)
 
-
-        else: # this is an insertation
+        else:  # this is an insertion
             new_node_list = self.nodes_in_path + inward.string
-            NewQ = Quantities_assignment(self.Data, Node_Value, new_node_list)
+            NewQ = Quantities_assignment_new(self.Data, Path.Node_Value, new_node_list)
             Total_time = self.path_time + self.insertion_time(i, inward)
 
         # Calculate the value
         if new_node_list:
             a_var[np.array(new_node_list) - 1] = 1
 
-        Total_value = sum((-Pi1.dot(d) + d.dot(Pi1)) * NewQ) - Total_time * (Pi2 + gamma / Path.R) - Pi3.dot(a_var)\
-                      - Pi4 - (Pi5 + 1) * sum(NewQ)
-        # the dual variabls added because of the edges 2 keep
+        Total_value = sum((-Pi1.dot(d) + d.dot(Pi1)) * NewQ) - Total_time * (Pi2 + gamma / Path.R) - Pi3.dot(a_var) \
+            - Pi4 - (Pi5 + 1) * sum(NewQ)
+        # the dual variables added because of the edges 2 keep
         for e in Pi6.keys():
             if e[0] in new_node_list and e[1] in new_node_list:
                 Total_value -= Pi6[e]
             if e[0] == 0 and e[1] in new_node_list:
                 Total_value -= Pi6[e]
 
-        # check if the avoid edges are here
+        # check if the avoided edges are here
         if Path.edges2avoid:
             try:
                 Avoid_st = Path.edges2avoid[inward.string[0]]
-            except:
+            except KeyError:
                 Avoid_st = []
             try:
                 Avoid_ed = Path.edges2avoid[inward.string[-1]]
-            except:
+            except KeyError:
                 Avoid_ed = []
 
             if outward:
-                if self.path[i-1].string[-1] in Avoid_st or self.path[i+1].string[0] in Avoid_ed:
+                if self.path[i - 1].string[-1] in Avoid_st or self.path[i + 1].string[0] in Avoid_ed:
                     Total_value += Path.Data.BigM_dis
             else:
-                if self.path[i].string[-1] in Avoid_st or self.path[i+1].string[0] in Avoid_ed:
+                if self.path[i].string[-1] in Avoid_st or self.path[i + 1].string[0] in Avoid_ed:
                     Total_value += Path.Data.BigM_dis
 
         return Total_value, NewQ
@@ -218,25 +227,27 @@ class Path:
             self.nodes_in_path.remove(a)
 
 
-def Quantities_assignment(Data, Nodes_value, node_set):
+def Quantities_assignment_old(Data, Nodes_value, node_set):
     # if the set of nodes in the path is given like the way I defined this function. It works correctly.
     # But if I need to decide on which node is going to the path then i have to calculate the value*di + ph3 to decide
     # which node is going to the path
-    # this function calculate the delivery quantities completely independent from the sequences
+    # this function calculate the delivery quantities completely independent of the
+    # sequences and minimize the reduced cost (negative)
+
     if 0 in node_set:
         print(node_set)
-        sys.exit("0 in the route in Quantities_assigement -start ")
+        sys.exit("0 in the route in Quantities_assignment -start ")
 
     remaining_Q = Data.Q
     G = Data.G
     q_heuristic = {}
     Values = {}
     for i in node_set:
-        if i != 0 and i != Data.NN+1:
+        if i != 0 and i != Data.NN + 1:
             Values[i] = Nodes_value[i]
     while Values:
-        next_2_assign = max(Values.keys(), key=lambda x: Values[x])
-        if Values[next_2_assign] >= 0:
+        next_2_assign = min(Values.keys(), key=lambda x: Values[x])  # most negative node value gets the
+        if Values[next_2_assign] < 0:
             q_heuristic[next_2_assign] = min(remaining_Q, G.nodes[next_2_assign]["demand"])
             remaining_Q -= q_heuristic[next_2_assign]
         else:
@@ -245,6 +256,45 @@ def Quantities_assignment(Data, Nodes_value, node_set):
     Out_q = np.zeros(Data.NN - 1, dtype=int)
 
     for inx, value in q_heuristic.items():
-        Out_q[inx-1] = value
+        Out_q[inx - 1] = value
+
+    return Out_q
+
+
+def Quantities_assignment_new(Data, Nodes_value, node_set):
+    # Only for use in pricing algorithm
+    # when the valid inequalities are added
+    # According to reduced cost , known nodes to visit, most negative cost, Updated with prop1 and 2
+    Out_q = np.zeros(Data.NN - 1, dtype=float)
+
+    if len(node_set) == 0:
+        return Out_q
+
+    if 0 in node_set:
+        print(node_set)
+        sys.exit("0 in the route in Quantities_assignment -start ")
+
+    q_heuristic = {}
+    route_D = sum([Data.G.nodes[i]["demand"] for i in node_set])
+    s_node = min(node_set, key=lambda i: Data.G.nodes[i]["demand"])
+    modified_obj = sum([Nodes_value[i] * Data.G.nodes[i]["demand"] / Data.G.nodes[s_node]["demand"] for i in node_set])
+
+    if modified_obj < 0:
+        q_heuristic[s_node] = min(Data.G.nodes[s_node]["demand"],
+                                  Data.G.nodes[s_node]["demand"] * float(Data.Q) / route_D)
+    else:
+        q_heuristic[s_node] = (Data.G.nodes[0]["supply"] / Data.total_demand) * Data.G.nodes[s_node]["demand"]
+
+    for i in node_set:
+        if i not in q_heuristic.keys():
+            q_heuristic[i] = q_heuristic[s_node] * float(Data.G.nodes[i]["demand"] / Data.G.nodes[s_node]["demand"])
+
+    for inx, value in q_heuristic.items():
+        Out_q[inx - 1] = value
+
+    # TEST
+    for i in node_set:
+        if Out_q[i - 1] == 0:
+            stop = 0
 
     return Out_q

@@ -119,7 +119,7 @@ for sinx, s in zip(instance_no, scenarios):
     # add nodes to the graph and import the demands
     for i, shel in enumerate(shelters):
         assigned_DP = np.where(y[:, shel] > 0)[0]
-        G.nodes[i+1]['demand'] = sum(D[s, assigned_DP])
+        G.nodes[i+1]['demand'] = sum(D[s, assigned_DP]) + 1
         G.nodes[i+1]['ID'] = shel
 
     G.nodes[10]['demand'] = 5 * G.nodes[10]['demand']

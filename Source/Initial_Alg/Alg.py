@@ -156,13 +156,22 @@ def is_branched(node, avoids):
     return 0
 
 
-def bundle_nodes(Data, selected_seq, keeps):
-
+def bundle_nodes(Data, All_seq, selected_seq, keeps):
+    # We move the connected keep edges around togther // We are not using this anymore
     for inx, seq in enumerate(selected_seq):
-        if seq[0] in keeps["N"].keys():
+        first_member = seq[0]
+        if first_member in keeps["N"].keys():
+            second_member = seq[1]
             seq = [seq]
-            for a in keeps["N"][seq[0][0]]:
-                seq.append(Data.All_seq[a][0])
+            for a in keeps["N"][first_member]:
+                if a == second_member: continue
+                seq_inx = (min(a, first_member), max(a, first_member))
+                try:
+                    seq.append(All_seq[seq_inx][0])
+                except KeyError:
+                    print(All_seq)
+                    print(selected_seq)
+                    sys.exit(f"Key error {seq_inx} line 173 in Alg.py")
         selected_seq[inx] = seq
 
     return selected_seq
@@ -177,20 +186,21 @@ def update_f(f, v):
     return f
 
 
-def build_specific_route(Data, alpha, beta):
-    routes = [[0, 4, 11, 14], [0, 5, 12, 3, 10, 14], [0, 6, 7, 8, 1, 9, 2, 14]]
+def build_specific_route(Data, All_seq, alpha, beta):
+    # routes = [[0, 4, 11, 14], [0, 5, 12, 3, 10, 14], [0, 6, 7, 8, 1, 9, 2, 14]]
     # routes = [[0, 11, 5, 14], [0, 4, 10, 9, 14], [0, 2, 12, 1, 8, 7, 3, 6, 14]]
-    D0, D1 = Data.All_seq["D0"][0], Data.All_seq["D1"][0]
+    routes = [[0, 2, 12, 1, 9, 11, 14], [0, 3, 8, 4, 14], [0, 6, 7, 5, 10, 14]]
+    D0, D1 = All_seq["D0"][0], All_seq["D1"][0]
     new_routes = []
     for r in routes:
-        new_routes.append(RD.RouteDel([D0] + [Data.All_seq[n][0] for n in r[1:-1]] + [D1]))
+        new_routes.append(RD.RouteDel([D0] + [All_seq[n][0] for n in r[1:-1]] + [D1], "init_specific"))
 
     new_sol = Solution(new_routes, alpha, beta)
 
     return new_sol
 
 
-def TabuRoute(Data, dis, Pars, keeps, avoids, CurrentSol):
+def TabuRoute(Data, All_seq, dis, Pars, keeps, avoids, CurrentSol):
     it = 1
     q = Pars[0] # Number of Nodes to reassign
     P1 = Pars[1] # number of nearest neighbors of node v
@@ -203,7 +213,6 @@ def TabuRoute(Data, dis, Pars, keeps, avoids, CurrentSol):
     alpha = Pars[8]
     beta = Pars[9]
 
-
     CurrentSol.score_cal(alpha, beta)
     BestSol = copy.deepcopy(CurrentSol)
     Best_F_Sol = copy.deepcopy(CurrentSol)
@@ -212,21 +221,21 @@ def TabuRoute(Data, dis, Pars, keeps, avoids, CurrentSol):
     tabu_list = {}
     No_Change_cont = 0
 
-    f = {key[0][0]: 0 for key in Data.All_seq.values()}
+    f = {key[0][0]: 0 for key in All_seq.values()}
 
     while No_Change_cont <= Max_No_Change and it < 100:
         # print(f"Iteration {it}: current_ob: {CurrentSol.score} | Best solution {Best_F_Sol.score}")
         # Step 1 Node selection
         # Verify the infeasibility of routes
-        Route_infeasible = [not r.time_F or not r.cap_F or r.keep_avoid_F for r in CurrentSol.routes]
+        Route_infeasible = [not r.time_F or not r.cap_F or not r.keep_avoid_F for r in CurrentSol.routes]
         # score the sequences based on their appearance in infeasible / feasible routes
-        Select_probability = dict([(n, Route_infeasible[inx] + 1 + sum(f.values()) - f[n[0]])
+        Select_probability = dict([(n, 3* Route_infeasible[inx] + 1 + sum(f.values()) - f[n[0]])
                                    for inx, r in enumerate(CurrentSol.routes) for n in r.route[1:-1]])
         selected_seq = set()
         while len(selected_seq) < q:
             selected_seq.add(utils.roul_wheel(Select_probability))
         selected_seq = list(selected_seq)
-        selected_seq = bundle_nodes(Data, selected_seq, keeps)
+        # selected_seq = bundle_nodes(Data, All_seq, selected_seq, keeps)
 
         # Step 2 (Evaluation of all candidate moves)
         Candidates = {}
@@ -240,8 +249,8 @@ def TabuRoute(Data, dis, Pars, keeps, avoids, CurrentSol):
                 # test inserting the node to a possible path
 
                 P_Sol = CurrentSol.Best_insertion(dis, alpha, beta, v, origin_seq, r_id)
-                # before yoou do anything else pick  this solution
-                if P_Sol.feasible0 and P_Sol.obj < Best_F0_sol.obj:
+                # before you do anything else pick  this solution
+                if P_Sol.feasible0 and P_Sol.obj < Best_F0_sol.obj: # feasible without considering avoiding and keeping edges
                     Best_F0_sol = copy.deepcopy(P_Sol)
 
                 # Check if the move is Tabu
@@ -284,26 +293,27 @@ def TabuRoute(Data, dis, Pars, keeps, avoids, CurrentSol):
         it += 1
         if No_Change_cont >= 8:
             # print("------- Restart ------")
-            CurrentSol = greedy_build(Data, dis, alpha, beta,flag="random")
+            CurrentSol = greedy_build(Data, All_seq,dis, alpha, beta,flag="random")
             No_Change_cont = 0
 
     #print('Iteration %d : Best F solution Obj = %s Total time = %s ' % (it, Best_F_Sol.obj, Best_F_Sol.total_time))
-    if Best_F0_sol.obj < Best_F_Sol.obj:
+    if not Best_F0_sol.feasible:
+        Best_F0_sol = 0
         #print(f"I found even better feasible solution with obj = {Best_F0_sol.obj}")
         pass
     return Best_F_Sol, Best_F0_sol
 
 
-def build_a_random_sol(Data, dis, alpha, beta):
+def build_a_random_sol(Data,All_seq, dis, alpha, beta):
     starting_angel = random.randint(0, 360)
     print(f"I started the initial sol once again with Angle {starting_angel}")
-    All_seq = change_angle_from_depot(Data.All_seq, starting_angel)
+    All_seq = change_angle_from_depot(All_seq, starting_angel)
     routes = Sweep(Data, dis, All_seq)
     new_sol = Solution(routes, alpha, beta)
     return new_sol
 
 
-def Initial_feasibleSol(Data, dis, keeps, avoids, number_of_sols):
+def Initial_feasibleSol(Data,All_seq,  dis, keeps, avoids, number_of_sols):
     Data.Penalty = max(dis.values()) * 10
     RD.RouteDel.nodes2keep = keeps["E"]
     RD.RouteDel.nodes2avoid = avoids["E"]
@@ -328,17 +338,19 @@ def Initial_feasibleSol(Data, dis, keeps, avoids, number_of_sols):
     best_F0_sol = 0
     while initial_Sol_count < number_of_sols and no_success < 5:
 
-        new_sol = CW(Data, dis, alpha, beta)
-        #new_sol = greedy_build(Data, dis,  alpha, beta)
+        new_sol = CW(Data, All_seq, dis, alpha, beta)
+        #new_sol = greedy_build(Data, All_seq,dis,  alpha, beta)
         # new_sol = build_a_random_sol(Data, dis, alpha, beta)
-        # new_sol = build_specific_route(Data, alpha, beta)
+        #if len(keeps["E"]) == 0 and len(avoids["E"]) ==0: # Only run for the root node
+        #    new_sol = build_specific_route(Data, All_seq, alpha, beta)
         # print(f"The initial solution {new_sol.score}")
-        new_sol, good_sol = TabuRoute(Data, dis, pars, keeps, avoids, new_sol)
+        new_sol, good_sol = TabuRoute(Data, All_seq, dis, pars, keeps, avoids, new_sol)
 
         # sys.exit(new_sol.routes)
         if new_sol.feasible:
             initial_Sol_count += 1
             new_sols.append(new_sol)
+            print(f"The TS optimal solution {new_sol.score}")
         else:
             print("Keep list")
             print(keeps)
@@ -346,9 +358,11 @@ def Initial_feasibleSol(Data, dis, keeps, avoids, number_of_sols):
             print(avoids)
             # input("Press any key to continue")
             no_success += 1
-        if best_F0_sol==0:
-            best_F0_sol = copy.deepcopy(good_sol)
-        elif good_sol.obj < best_F0_sol.obj:
-            best_F0_sol = copy.deepcopy(good_sol)
+        if good_sol != 0:
+            #print(f"UB with TS with out edge branching {good_sol.score}")
+            if best_F0_sol == 0:
+                best_F0_sol = copy.deepcopy(good_sol)
+            elif good_sol.obj < best_F0_sol.obj:
+                best_F0_sol = copy.deepcopy(good_sol)
 
     return new_sols, best_F0_sol, no_success < 5

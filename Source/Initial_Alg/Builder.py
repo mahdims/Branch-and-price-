@@ -19,8 +19,8 @@ def assignment_cost(bins, bin_inx, item):
     return Gini(demands)
 
 
-def greedy_build(Data, dis, alpha, beta, flag="sorted"):
-    All_seq = Data.All_seq
+def greedy_build(Data, All_seq, dis, alpha, beta, flag="sorted"):
+    # All_seq = Data.All_seq
     unassigned = [item[0] for inx, item in All_seq.items() if inx != "D0" and inx != "D1"]
     if flag == "sorted":
         unassigned = sorted(unassigned, key=lambda x: x.demand, reverse=True)
@@ -47,7 +47,7 @@ def greedy_build(Data, dis, alpha, beta, flag="sorted"):
     for bin in bins:
         bin.insert(0, All_seq["D0"][0])
         bin += All_seq["D1"]
-        new_RD = RD.RouteDel(bin)
+        new_RD = RD.RouteDel(bin, "Init")
         new_RD.calc_time(dis)
         routes.append(new_RD)
 
@@ -79,7 +79,7 @@ def apply_the_merge(dis, routes, selected_move):
     r2 = selected_move[1]
     start_inx = len(routes[r1]) - 2
     for sec in routes[r2][1:-1]:
-        added_time = routes[r1].insertion_time(dis, start_inx, sec)
+        added_time, _ = routes[r1].insertion_time(dis, start_inx, sec)
         routes[r1].insert(start_inx, sec, added_time)
         start_inx += 1
 
@@ -87,15 +87,15 @@ def apply_the_merge(dis, routes, selected_move):
     return routes
 
 
-def CW(Data, dis, alpha, beta):
-    All_seq = Data.All_seq
+def CW(Data, All_seq, dis, alpha, beta):
+    #All_seq = Data.All_seq
     routes = []
     for inx, item in All_seq.items():
         if inx != "D0" and inx != "D1":
             route = [All_seq["D0"][0]]
             route.append(item[0])
             route += All_seq["D1"]
-            routes.append(RD.RouteDel(route))
+            routes.append(RD.RouteDel(route, "Init"))
 
     accepted_move = 1
     while accepted_move:
@@ -103,11 +103,11 @@ def CW(Data, dis, alpha, beta):
         accepted_move = 0
         for r1, r2 in it.combinations(range(len(routes)), 2):
             feasible, distance, gini = combine_score(Data, dis, routes, r1, r2)
-            if feasible and distance > 0:
+            if feasible and distance > 0 or len(routes) > Data.M:
                 candidate_list.append([r1, r2, feasible, distance, gini, 0]) # convert the saving to cost by the minus
 
             feasible, distance, gini = combine_score(Data, dis, routes, r2, r1)
-            if feasible  and distance > 0:
+            if feasible and distance > 0 or len(routes) > Data.M:
                 candidate_list.append([r2, r1, feasible, distance, gini, 0])
 
         if len(candidate_list):

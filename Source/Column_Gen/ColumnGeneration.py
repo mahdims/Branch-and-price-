@@ -2,6 +2,7 @@ import itertools as it
 import networkx as nx
 import numpy as np
 import sys
+from Column_Gen import Sub_model
 from utils import utils
 from utils import Route_delivery as RD
 from itertools import *
@@ -12,7 +13,6 @@ import copy
 
 
 def subtourelim(model, where):
-
     if where == GRB.callback.MIPSOL:
         selected = []
         sol = {}
@@ -25,7 +25,7 @@ def subtourelim(model, where):
         tour = Get_the_Subtours(G, selected)
         if tour:
             # add a subtour elimination constrain
-            complement = [i for i in it.permutations(tour, 2)] # if just one node gives it will return empty list []
+            complement = [i for i in it.permutations(tour, 2)]  # if just one node gives it will return empty list []
             complement2 = copy.copy(complement)
             for e in complement:
                 if e not in model._varX.keys():
@@ -34,18 +34,18 @@ def subtourelim(model, where):
             expr1 = 0
             for i, j in complement2:
                 expr1 += model._varX[i, j]
-            #for k in tour:
-            expr2 = 0
 
-            for l in tour:
-                # if l != k:
-                expr2 += model._varA[l]
+            for k in tour:
+                expr2 = 0
+                for l in tour:
+                    if l != k:
+                        expr2 += model._varA[l]
 
-            model.cbLazy(expr1 <= expr2 - 1)
+                model.cbLazy(expr1 <= expr2)
 
 
 def Get_the_Subtours(G, edges):
-    NN = G.number_of_nodes()-1
+    NN = G.number_of_nodes() - 1
     nodes = set()
     for e in edges:
         nodes = nodes | set(e)
@@ -59,12 +59,12 @@ def Get_the_Subtours(G, edges):
     subtours = [c for c in sorted(nx.connected_components(Resulting_G), key=len, reverse=True)]
     # Put the tour with depot nodes at first
     for s in subtours:
-        if 0 in s and NN+1 in s:
+        if 0 in s and NN + 1 in s:
             subtours.remove(s)
             break
 
     if subtours:
-        return list(min(subtours, key=lambda x :len(x))) # return minim length sub ture
+        return list(min(subtours, key=lambda x: len(x)))  # return minim length sub ture
     else:
         return []
 
@@ -72,13 +72,13 @@ def Get_the_Subtours(G, edges):
 def get_Duals(NN, RMP):
     AllMasterCons = RMP.getConstrs()
     AllDual = RMP.getAttr("Pi", AllMasterCons)
-    linear = np.array(AllDual[0:(NN-1)*(NN-1)]).reshape((NN-1, NN-1)) #get_constraints(RMP, name='linear')
-    Per_end = (NN-1)*(NN-1)
+    linear = np.array(AllDual[0:(NN - 1) * (NN - 1)]).reshape((NN - 1, NN - 1))  # get_constraints(RMP, name='linear')
+    Per_end = (NN - 1) * (NN - 1)
     totaltime = np.array(AllDual[Per_end])
-    visit = np.array(AllDual[Per_end+1:Per_end+NN])
-    Per_end = Per_end+NN
+    visit = np.array(AllDual[Per_end + 1:Per_end + NN])
+    Per_end = Per_end + NN
     vehicle = np.array(AllDual[Per_end])
-    Inv = np.array(AllDual[Per_end+1])
+    Inv = np.array(AllDual[Per_end + 1])
     EdgK = {}
     Per_end += 2
     # if edges2keep["E"]:
@@ -95,16 +95,18 @@ def get_Duals(NN, RMP):
 
 
 def Set_sub_obj(Data, R, Gc, dis, Duals, Sub):
-    x, q, a, psi = Sub._varX, Sub._varQ, Sub._varA, Sub._varPsi
-    NN = len(a) - 1
+    # @TODO The sub problem objective miscalculates !!!!!!!! Not for all solutions but for some solutions!
+
+    Sub.reset(0)
+
+    NN = Data.NN
     (_, linear, totaltime, visit, vehicle, Inv, E_keep, sub_row) = Duals
-    Gc = G.subgraph(range(1, NN))
-    expr = - quicksum(
-        (q[i] * Gc.nodes[j]['demand'] - q[j] * Gc.nodes[i]['demand']) * linear[i - 1, j - 1] for i in Gc.nodes for j in
-        Gc.nodes) \
-           - quicksum(x[i, j] * dis[(i, j)] for (i, j) in x.keys() if j != NN + 1) * (totaltime + Data.Gamma / R) \
-           - quicksum(a[i] * visit[i - 1] for i in Gc.nodes) \
-           - quicksum(q) * (Inv + 1) - vehicle
+
+    expr = - quicksum(Sub._varQ[i] * (1 + Inv + quicksum(
+        (linear[i - 1, j - 1] - linear[j - 1, i - 1]) * Gc.nodes[j]["demand"] for j in Gc.nodes)) for i in Gc.nodes) \
+        - quicksum(Sub._varX[i, j] * dis[(i, j)] for (i, j) in Sub._varX.keys() if j != NN + 1) * (totaltime + Data.Gamma / R) \
+        - quicksum(Sub._varA[i] * visit[i - 1] for i in Gc.nodes) \
+        - vehicle
 
     '''
     for (i, j) in edges2keep["E"]:
@@ -113,12 +115,11 @@ def Set_sub_obj(Data, R, Gc, dis, Duals, Sub):
         else:
             expr -= (x[i, j] + x[j, i]) * E_keep[(i, j)]
     '''
-
-    if Sub._varPsi:
-        expr -= quicksum(psi[i] * sub_row[i] for i in psi.keys())
+    # if Sub._varPsi:
+    #    expr -= quicksum(Sub._varPsi[i] * sub_row[i] for i in Sub._varPsi.keys())
 
     Sub.setObjective(expr, GRB.MINIMIZE)
-
+    Sub.update()
     return Sub
 
 
@@ -130,13 +131,13 @@ def Calculate_the_subproblem_obj(Data, R, Duals, col, q, cuts):
     Pi3 = np.array(Duals[3])
     Pi4 = np.array(Duals[4])
     Pi5 = np.array(Duals[5])
-    Pi6 = Duals[6] # keep edge duals
-    Pi7 = Duals[7] # sub row duals
+    Pi6 = Duals[6]  # keep edge duals
+    Pi7 = Duals[7]  # sub row duals
     a_var = np.zeros(Data.NN - 1)
     if col.nodes_in_path:
         a_var[np.array(col.nodes_in_path) - 1] = 1
     Value = sum((- Pi1.dot(d) + d.dot(Pi1)) * q) - col.travel_time * (Pi2 + gamma / R) - Pi3.dot(a_var) - \
-            Pi4 - (Pi5 + 1) * sum(q)
+        Pi4 - (Pi5 + 1) * sum(q)
 
     # the dual variables added because of the edges 2 keep
     for e in Pi6.keys():
@@ -159,7 +160,8 @@ def Columns_with_negitive_costs(Data, R, Duals, Col_dic, cuts):
     All_new_cols_IDs = []
     Nodes_value = PR.Node_value_calc(Data, Duals)
     for col_ID, col in Col_dic.items():
-        NewQ = Path.Quantities_assignment(Data, Nodes_value, col.nodes_in_path)
+        # Calculate Q for the problem with valid inequality
+        NewQ = Path.Quantities_assignment_new(Data, Nodes_value, col.nodes_in_path)
         # in GRASP  we only have the q for customers but here in ColGen node zero should have 0 delivery
         New_RDP = [0] + list(NewQ)
         Value = Calculate_the_subproblem_obj(Data, R, Duals, col, NewQ, cuts)
@@ -172,7 +174,6 @@ def Columns_with_negitive_costs(Data, R, Duals, Col_dic, cuts):
 
 
 def Update_Master_problem(Gc, R, cuts, RMP, Col_dic, Col_ID, RDP_ID):
-
     # Step 1 : see what is new about this column
     # step 2 : add the appropriate variable and index
     New_Route = Col_dic[Col_ID]
@@ -183,10 +184,12 @@ def Update_Master_problem(Gc, R, cuts, RMP, Col_dic, Col_ID, RDP_ID):
         pre_node = next_node
     #  Update the Master problem  ##
     col = Column()
+
     for i, j in it.permutations(Gc.nodes(), 2):
         # Master problem linear constraint update ##
         cons = RMP.getConstrByName("linear[%d,%d]" % (i, j))
-        col.addTerms(- New_Route.RDP[RDP_ID][j] * Gc.nodes[i]['demand'] + New_Route.RDP[RDP_ID][i] * Gc.nodes[j]['demand'], cons)
+        col.addTerms(
+            - New_Route.RDP[RDP_ID][j] * Gc.nodes[i]['demand'] + New_Route.RDP[RDP_ID][i] * Gc.nodes[j]['demand'], cons)
 
     for n in New_Route.nodes_in_path:
         consvisit = RMP.getConstrByName("visit[%d]" % n)
@@ -208,11 +211,12 @@ def Update_Master_problem(Gc, R, cuts, RMP, Col_dic, Col_ID, RDP_ID):
     # Sub-row constraint
     for inx, cut in enumerate(cuts):
         cut = list(cut[0])
-        if (cut[0] in New_Route.nodes_in_path) + (cut[1] in New_Route.nodes_in_path) + (cut[2] in New_Route.nodes_in_path) >= 2:
+        if (cut[0] in New_Route.nodes_in_path) + (cut[1] in New_Route.nodes_in_path) + (
+                cut[2] in New_Route.nodes_in_path) >= 2:
             cons = RMP.getConstrByName("Subrow[%d]" % inx)
             col.addTerms(1, cons)
 
-    new_y = RMP.addVar(lb=0, ub=1, obj=-sum(New_Route.RDP[RDP_ID]) - Gamma * New_Route.travel_time/R,
+    new_y = RMP.addVar(lb=0, ub=1, obj=-sum(New_Route.RDP[RDP_ID]) - Gamma * New_Route.travel_time / R,
                        name="y[%d,%d]" % (Col_ID, RDP_ID), column=col)
 
     RMP.update()
@@ -242,11 +246,12 @@ def Get_the_Y_variables(RMP):
     return Y
 
 
-def Get_alternative_sols(Data, dis, Sub):
+def Get_alternative_sols(Data, Sub):
+    # @TODO Currently, we only get one solution out of GUROBI for pricing , We might take more than one
     # this function will return second and more worse solution after solving the pricing MIP
     # get the sub-problem solution
     MIPSolutions = []
-    for sol_num in [0]: # range(Sub.SolCount):
+    for sol_num in [0]:  # range(Sub.SolCount):
         Sub.Params.SolutionNumber = sol_num
         Selected_edges = []
         for key, var in Sub._varX.items():
@@ -267,9 +272,71 @@ def Get_alternative_sols(Data, dis, Sub):
     return MIPSolutions
 
 
-def ColumnGen(Data, R, RMP, G_in, Col_dic, dis, nodes2keep, nodes2avoid, Sub, cuts):
-    Stoping_R_cost = -0.000099999991
-    heuristic_path_value = -10
+def create_new_columns(Data, R, All_seq, nodes2keep, nodes2avoid, Duals, Col_dic,Gc, dis, Sub,  cuts):
+    # First, we create new delivery for existing routes in hope of finding reduce negative columns.
+    # If not successful we run the GRASP heuristic
+    # If not successful we run the Gurobi on pricing mathematical model
+    flag = ''
+    All_new_cols_IDs = []
+    we_found_cols, Col_dic, All_new_cols_IDs = Columns_with_negitive_costs(Data, R, Duals, Col_dic, cuts)
+
+    if we_found_cols:
+        flag = "RECALC"
+        return flag, Col_dic, All_new_cols_IDs, 10
+    else:
+        # Next, we try the GRASP heuristic
+        (Heuristic_works, heuristic_paths, heuristic_path_value) = PR.GRASP(Data, All_seq, nodes2keep,
+                                                                                nodes2avoid, Duals, R)
+        # if the GRASP sol is too week just consider as non success
+        if Heuristic_works:
+            if all([path.value> -0.01 for path in heuristic_paths]):
+                Heuristic_works = 0
+
+        if Heuristic_works:
+            flag = "GRASP"
+            for path in heuristic_paths:
+                New_Route = RD.RouteDel(path.path, "GRASP")
+                New_Route.set_RDP([0] + list(path.q))
+                # check whether the new route is unique or not
+                indicator, Col_ID = New_Route.Is_unique(Col_dic)
+                if indicator == 1:
+                    RDP_ID = 1
+                    Col_dic[Col_ID] = New_Route
+                    All_new_cols_IDs.append((Col_ID,RDP_ID ))
+                elif indicator == 2:
+                    RDP_ID = Col_dic[Col_ID].add_RDP(New_Route.RDP[1])
+                    All_new_cols_IDs.append((Col_ID, RDP_ID))
+                else:
+                    continue
+
+            return flag, Col_dic, All_new_cols_IDs, -10
+
+        else:
+            # Next Solve it with mathematical model
+            Sub = Set_sub_obj(Data, R, Gc, dis, Duals, Sub)
+            Sub.optimize(subtourelim)
+            if Sub.status != 2:
+                # @TODO What that even means? is the node infeasible?
+                sys.exit("infeasible sub problem by model")
+            flag = "GUROBI"
+            print("Sub Problem optimal value: %f" % Sub.objVal)
+            MIP_solutions = Get_alternative_sols(Data, Sub)
+            for New_Route in MIP_solutions:
+                indicator, Col_ID = New_Route.Is_unique(Col_dic)
+                if indicator == 1:
+                    RDP_ID = 1
+                    Col_dic[Col_ID] = New_Route
+                    All_new_cols_IDs.append((Col_ID, RDP_ID))
+                elif indicator == 2:
+                    RDP_ID = Col_dic[Col_ID].add_RDP(New_Route.RDP[1])
+                    All_new_cols_IDs.append((Col_ID, RDP_ID))
+                else:
+                    continue
+            return flag, Col_dic, All_new_cols_IDs, Sub.objVal
+
+
+def ColumnGen(Data, All_seq, R, RMP, G_in, Col_dic, dis, nodes2keep, nodes2avoid, Sub, cuts):
+    Stoping_R_cost = -0.0002
     global G, Gamma
     G = G_in
     NN = Data.NN
@@ -277,111 +344,46 @@ def ColumnGen(Data, R, RMP, G_in, Col_dic, dis, nodes2keep, nodes2avoid, Sub, cu
     Gamma = Data.Gamma
     RMP_objvals = []
     Subobj = -1
-    Heuristic_works = 1
-    Solved_by_Heuristic = 0
     RMP_objvals.append(133)
     tail_counter = 0
 
-    while Subobj < Stoping_R_cost and tail_counter < 1000000:
-        # Solve the Master problem
-        # print("We are solving the Master")
+    while Subobj < Stoping_R_cost and tail_counter < 1000:
+        # STEP1: Solve the Master problem
+        SolvedBy = ""
+        RMP.reset()
         RMP.optimize()
+        RMP.write("Master0.lp")
         if RMP.status != 2:
             # Report that the problem in current node is infeasible
             print("Infeasible Master Problem")
             sys.exit()
             return 0, RMP, Data.BigM, [], Col_dic
-        # print("Master Problem Optimal Value: %f" %RMP.objVal)
-        if RMP_objvals[-1] * 0.99 <= RMP.objVal <= RMP_objvals[-1] * 1.01 and Solved_by_Heuristic==0 and we_found_cols ==0:
+        RMP_objvals.append(RMP.objVal)
+        print("Master Problem Optimal Value: %f" % RMP.objVal)
+
+        # @TODO this is to cut the tail effect in CG but should we use it?
+        if RMP_objvals[-1] * 0.99 <= RMP.objVal <= RMP_objvals[-1] * 1.01 \
+                and SolvedBy == "GUROBI":
             tail_counter += 1
         else:
             tail_counter = 0
-        RMP_objvals.append(RMP.objVal)
-        # Get the dual variables
+
+        # STEP2: Get the master problem duals
         Duals = get_Duals(NN, RMP)
-        # First search for the negative value columns and then if you can not find any, move on to the other approaches.
-        # Then we try the GRASP heuristic and then if the obj function found to be zero by then it is time to run
-        # the optimal solver.
 
-        # For each existing routes in the col set we calculate the delivery quantity by the heuristic approach.
-        we_found_cols, Col_dic, All_new_cols_IDs = Columns_with_negitive_costs(Data, R, Duals, Col_dic, cuts)
+        # STEP3: Find the reduced cost columns
+        SolvedBy, Col_dic, All_new_cols_IDs, Subobj = \
+            create_new_columns(Data, R, All_seq, nodes2keep, nodes2avoid, Duals, Col_dic, Gc, dis, Sub, cuts)
         # RMP, Col_dic = Delete_the_unused_columns(RMP, Col_dic)
-        if we_found_cols == 1:
-            Solved_by_Heuristic = 0
 
-        if not we_found_cols or not Heuristic_works:
-            if Heuristic_works: # Solve it with the heuristics
-                heuristic_paths = []
-                # First try to solve it with the heuristics and then if not a chance to find a solution
-                # (Heuristic_works, heuristic_paths, heuristic_path_value) = PR.GRASP(Data, nodes2keep, nodes2avoid, Duals, R)
-                # We should change the following statement, it seems that this not working
-                Solved_by_Heuristic = 0
-                Heuristic_works = 0
-
-            if not Heuristic_works:  # Solve it with mathematical model
-                # Set the sub problem  objective
-                Sub = Set_sub_obj(Data, R, Gc, dis, Duals, Sub)
-                Sub.optimize(subtourelim)
-                Subobj = Sub.objVal
-                if Sub.status != 2: sys.exit("infeasible sub problem by model")
-                MIP_solutions = Get_alternative_sols(Data, dis, Sub)
-
-                Solved_by_Heuristic = 0
-                Heuristic_works = 1 # by default next time heuristic should be able to solve the problem
-                # print("Sub Problem optimal value: %f" % Subobj)
-
-        if heuristic_path_value > Stoping_R_cost:
-            heuristic_path_value = -10
-            Heuristic_works = 0 # It is the time to run the MIP solver
-
-        if Subobj > Stoping_R_cost:
+        if Subobj > Stoping_R_cost and SolvedBy == "GUROBI":
             continue
 
-        # Add the new col and update the master problem
-        if we_found_cols:
-            for Col_ID, RDP_ID in All_new_cols_IDs:
-                # Update the master problem with new columns
-                RMP = Update_Master_problem(Gc, R, cuts, RMP, Col_dic, Col_ID, RDP_ID)
-
-        elif Solved_by_Heuristic:
-            for path in heuristic_paths:
-                New_Route = RD.RouteDel(path.path)
-                New_Route.set_RDP([0] + list(path.q))
-                # check whether the new route is unique or not
-                indicator, Col_ID = New_Route.Is_unique(Col_dic)
-                if indicator == 1:
-                    RDP_ID = 1
-                    Col_dic[Col_ID] = New_Route
-                elif indicator == 2:
-                    RDP_ID = Col_dic[Col_ID].add_RDP(New_Route.RDP[1])
-                else:
-                    continue
-                # Update the master problem with new columns
-                RMP = Update_Master_problem(Gc, R, cuts, RMP, Col_dic, Col_ID, RDP_ID)
-
-
-        elif not we_found_cols: # Then it solved by sub problem mathematical model
-            old_count = 0
-            for New_Route in MIP_solutions:
-                reduced_cost = Calculate_the_subproblem_obj(Data, R, Duals, New_Route, New_Route.RDP[1][1:], cuts)
-                if reduced_cost < 0:
-                    # print(f"This is the reduced cost of the sub problem solutions :{reduced_cost}")
-                    # check whether the new route is unique or not
-                    indicator, Col_ID = New_Route.Is_unique(Col_dic)
-                    if indicator == 1:
-                        RDP_ID = 1
-                        Col_dic[Col_ID] = New_Route
-                    elif indicator == 2:
-                        RDP_ID = Col_dic[Col_ID].add_RDP(New_Route.RDP[1])
-                    else:
-                        old_count += 1
-                        # print("MIP found an old column")
-                        continue
-
-                    RMP = Update_Master_problem(Gc, R, cuts, RMP, Col_dic, Col_ID, RDP_ID)
-
+        # STEP4: Add the new cols and update the master problem
+        for Col_ID, RDP_ID in All_new_cols_IDs:
+            RMP = Update_Master_problem(Gc, R, cuts, RMP, Col_dic, Col_ID, RDP_ID)
             # print(f"Out of {len(MIP_solutions)} columns {old_count} were already there.")
-    # read the final selected Y variables
+
     if RMP.status != 2:
         RMP.optimize()
 

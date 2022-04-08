@@ -8,13 +8,42 @@ import itertools as it
 from utils import Route_delivery as RD
 
 
+def demand_proportional(Data, route_del):
+
+    for key, val in route_del.RDP.items():
+        route_d = 0
+        ratio = 0
+        for n in range(1, Data.NN):
+            n_demand = Data.G.nodes[n]["demand"]
+            route_d += n_demand * (int(val[n]) != 0)
+            new_ratio = round(val[n]/n_demand, 4)
+            if new_ratio != 0:
+                if ratio == 0:
+                    ratio = new_ratio
+                elif ratio != new_ratio:
+                    print(f"Not demand proportional {route_del.creator}")
+                    sys.exit("The new valid inequality is not respected")
+
+        total_del = round(sum(val),0)
+        if route_d * Data.C> Data.Q:
+            if total_del != Data.Q:
+                print(f"Not equal to Q {route_del.creator}")
+                sys.exit("The new valid inequality is not respected")
+        else:
+            if total_del < route_d * Data.C:
+                print(f"Not bigger than D/C {route_del.creator}")
+                sys.exit("The new valid inequality is not respected")
+    return 1
+
+
+
 def calculate_the_obj(Data, Routes, RDPs):
     Gc = Data.Gc
     # create the mapping to find the node quantities  :))
     Q_mapping = {}
     for i in Gc.nodes:
         for r_ID, route in enumerate(Routes):
-            if route.is_visit(i):
+            if route.is_visit(i) != -1:
                 break
         Q_mapping[i] = (r_ID, i)
 
@@ -40,7 +69,7 @@ def edge_in_route(edge, route):
 
     # this function will check if route use edge i-j or not
     for i, j in [edge, (edge[1], edge[0])]:
-        if route.is_visit(i) and route.is_visit(j):
+        if route.is_visit(i) != -1 and route.is_visit(j) != -1:
             I_inx = route.where(i)
             if j in route[I_inx].string:
                 return 1
@@ -55,10 +84,10 @@ def avoid_NR_check(route, seq, avoids):
     # Return 1 if there is a violation (OW 0)
     for i, j in avoids:
         if seq[0] == i:
-            if route.is_visit(j):
+            if route.is_visit(j) != -1:
                 return 1
         elif seq[0] == j:
-            if route.is_visit(i):
+            if route.is_visit(i) != -1:
                 return 1
     return 0
 
@@ -67,37 +96,85 @@ def keep_NR_check(route, seq, keeps):
     # Checks if seq can be in this route and return 1 if there is a violation
     for i, j in keeps:
         if seq[0] == i:
-            if not route.is_visit(j):
+            if not route.is_visit(j) != -1:
                 return 1
 
         if seq[0] == j:
-            if not route.is_visit(i):
+            if not route.is_visit(i) != -1:
                 return 1
 
     return 0
 
 
-def avoid_check(route, avoids):
+def avoid_check(route, avoids, seq=[], i=-1):
+    # Returns the list of violated avoids
+    out = []
+    if isinstance(seq, list):
+        for i, j in avoids:
+            index_i = route.is_visit(i)
+            if index_i != -1:
+                per_inx = index_i - 1
+                if per_inx >= 0:
+                    if j == route.nodes_in_path[per_inx]:
+                        out.append((i, j))
 
-    for i, j in avoids:
-        if route.is_visit(i) and route.is_visit(j):
-            # print(f"Two nodes {i, j} should be avoided but its here \n {route.nodes_in_path}")
-            return 0
+                next_inx = index_i + 1
+                if next_inx < len(route.nodes_in_path):
+                    if j == route.nodes_in_path[next_inx]:
+                        out.append((i, j))
+    else:
+        out = {"Add": [], "Remove": []}
+        removed_n1, removed_n2 = (route[i][-1], route[i + 1][0])
+        if (removed_n1, removed_n2) in avoids:
+            out["Remove"].append((removed_n1, removed_n2))
+        elif (removed_n2, removed_n1) in avoids:
+            out["Remove"].append((removed_n2, removed_n1))
 
-    return 1
-
-
-def keep_check(route, keeps):
-
-    for i, j in keeps:
-        if route.is_visit(i) or route.is_visit(j):
-            if route.is_visit(i) and route.is_visit(j):
-                continue
+        new_edges = [(route[i][-1], seq[0]),  (seq[-1], route[i + 1][0])]
+        for a, b in new_edges:
+            if (a, b) in avoids:
+                out["Add"].append((a, b))
+            elif (b, a) in avoids:
+                out["Add"].append((b, a))
             else:
-                # print(f"nodes {(i, j)} are not together in the route \n {route.nodes_in_path}")
-                return 0
+                pass
+    return out
 
-    return 1
+
+def keep_check(route, keeps, seq=[], i=-1):
+    # Return a list of avoided keeps
+    out = []
+    if isinstance(seq, list):
+        for i, j in keeps:
+            i_inx = route.is_visit(i)
+            j_inx = route.is_visit(j)
+            if i_inx != -1 and j_inx != -1:
+                if (i_inx+1) == j_inx or (j_inx+1) == i_inx:
+                    pass
+                else:
+                    out.append((i, j))
+            elif i_inx == -1 and j_inx == -1:
+                pass
+            else:
+                out.append((i, j))
+    else:
+        # the added violated keeps and the removed violated keeps
+        out = {"Add": [], "Remove": []}
+        removed_n1, removed_n2 = (route[i][-1], route[i + 1][0])
+
+        if (removed_n1, removed_n2) in keeps:
+            out["Add"].append((removed_n1, removed_n2))
+        elif (removed_n2, removed_n1) in keeps:
+            out["Add"].append((removed_n2, removed_n1))
+
+        new_edges = [(route[i][-1], seq[0]), (seq[-1], route[i + 1][0])]
+
+        for a, b in keeps:
+            for n1, n2 in new_edges:
+                if (a == n1 and b == n2) or (a == n2 and b == n1):
+                    out["Remove"].append((a, b))
+
+    return out
 
 
 def check_branching(Data, col_dic, avoid, keep):
@@ -105,17 +182,20 @@ def check_branching(Data, col_dic, avoid, keep):
     if avoid:
         # print("Start check the list of edges to avoid")
         # print(avoid)
-        for r in col_dic.values():
-            if not avoid_check(r, avoid):
+        for name, r in col_dic.items():
+            if len(avoid_check(r, avoid)) != 0:
                 print(r)
+                print(f"The RD index {name} out of {len(col_dic)} created with {r.creator}")
+                print(keep)
                 sys.exit(f"Avoided is not correct!!! {avoid}")
 
     if keep:
         # print("Start checking the keep edges")
         # print(keep)
-        for r in col_dic.values():
-            if not keep_check(r, keep):
+        for name, r in col_dic.items():
+            if len(keep_check(r, keep)) != 0:
                 print(r)
+                print(f"The RD index {name} out of {len(col_dic)} created with {r.creator}")
                 sys.exit(f"Keep is not correct!!! {keep}")
 
     for r in col_dic.values():
@@ -164,7 +244,7 @@ def build_the_route(Data, Edges=[], route=[]):
                         seq_route.append(seq[0])
                     break
     seq_route.append(Data.All_seq["D1"][0])
-    New_Route = RD.RouteDel(seq_route)
+    New_Route = RD.RouteDel(seq_route, "MIP")
     if 0 in New_Route.nodes_in_path:
         sys.exit("Find you")
     if route[1:-1] != New_Route.nodes_in_path:

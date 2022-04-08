@@ -43,7 +43,7 @@ if __name__ == "__main__":
 
             results[File_name] = min(Avg_results, key=lambda x:x[0])
 
-            # print_the_solution(Bsolution)
+            # utils.print_the_solution(Bsolution)
             # utils.save_object(results, OWD + f"/Data/updated_results/{File_name}")
             # save_object(results,'.\%s\%s_BnPresult' %(Case_name,File_name))
     # save_object(R, "TObj_R_Kartal" )

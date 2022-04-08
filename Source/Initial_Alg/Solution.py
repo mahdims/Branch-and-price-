@@ -38,7 +38,7 @@ class Solution:
             route.feasibility_check(Solution.Data)
             violated_time += route.time_violation
             violated_cap += route.cap_violation
-            keep_avoid += route.keep_avoid_F
+            keep_avoid += (1-route.keep_avoid_F)
         self.time_F = violated_time == 0
         self.cap_F = violated_cap == 0
         self.keep_avoid_F = keep_avoid == 0
@@ -56,7 +56,7 @@ class Solution:
 
         for seq in seqs:
             for i, r in enumerate(self.routes):
-                if r.is_visit(seq):
+                if r.is_visit(seq) != -1:
                     origin_seq[seq] = i
                     inx.add(i)
         return origin_seq # list(inx)
@@ -85,7 +85,7 @@ class Solution:
             new_route = copy.deepcopy(self.routes[des_route])
             for seq in seqs:
 
-                if not new_route.is_visit(seq):
+                if new_route.is_visit(seq) == -1:
                     new_route, flag = Greedy_insertion(dis, Solution.Data.Maxtour, new_route, seq)
 
                     if flag:
@@ -100,7 +100,7 @@ class Solution:
                 temp_list.append(seq)
                 routes[seqs_origin[seq]] = remove_seq_from_route(routes[seqs_origin[seq]], seq)
             try:
-                new_route = RD.RouteDel(temp_list + [D1])
+                new_route = RD.RouteDel(temp_list + [D1], "Init_new_route")
             except KeyError:
                 sys.exit(f"Line 100 Solution : \n {seqs}")
             flag = 1
@@ -137,16 +137,19 @@ def Greedy_insertion(dis, Maxtour, tour, node):
     # Worst time complexity O(n**2)
     unable_2_route = []
     best_cost = float("inf")
+    Best_time_change = 0
     best_place = None
     # we go for all positions and penalties the avoid edges.
     for pos in range(len(tour) - 1):
-        time_change = tour.insertion_time(dis, pos, node)
-        if time_change < best_cost and tour.travel_time + time_change <= Maxtour:
+        fitness_change, time_change = tour.insertion_time(dis, pos, node)
+        if fitness_change < best_cost and tour.travel_time + time_change <= Maxtour:
             best_place = pos
-            best_cost = time_change
-    if best_place != None:
+            best_cost = fitness_change
+            Best_time_change = time_change
+
+    if best_cost != float("inf"):
         new_tour = copy.deepcopy(tour)
-        new_tour.insert(best_place, node, best_cost)
+        new_tour.insert(best_place, node, Best_time_change)
     else:
         return tour, 0
     # print(f"I could insert with time change {time_change}")
@@ -160,7 +163,7 @@ def Optimal_quantity(Data, routes):
     C_remain = C
     r_demand = [sum([Gc.nodes[i]['demand'] for i in r.nodes_in_path]) for r in routes]
     un_decided = [i for i in range(len(routes))]
-    while len(un_decided) !=0:
+    while len(un_decided) != 0:
         vio_route = []
         Beta = C_remain / max(C_remain, sum([r_demand[r_inx] for r_inx in un_decided]))
         for r_inx in un_decided:
@@ -185,13 +188,20 @@ def Optimal_quantity(Data, routes):
                 C_remain -= Q
 
         # print(f"Ideal demand: {Data.total_demand/Data.M}")
+
     RDPS = {i: routes[i].RDP[1] for i in range(len(routes))}
     obj = utils.calculate_the_obj(Data, routes, RDPS)
 
-    #D_rate = {}
-    #D_sum = []
-    #for i, r in RDPS.items():
-    #    D_rate[i] = [n/Data.G.nodes[j]["demand"] for j, n in enumerate(r) if j != 0]
-    #    D_sum.append(sum(r))
+    D_rate = {}
+    D_correct = {}
+    D_sum = []
+    for i, r in RDPS.items():
+        D_rate[i] = [n/Data.G.nodes[j]["demand"] for j, n in enumerate(r) if j != 0]
+        D_correct[i] = all([n <= Data.G.nodes[j]["demand"] for j, n in enumerate(r) if j != 0])
+        D_sum.append(sum(r))
+        if D_sum[i] < C/Data.total_demand * r_demand[i] and round(D_sum[i],0) != Q:
+            print("The assigned deliveries in the initial algorithm has some problem")
+        if not D_correct[i]:
+            print("There is a problem , more than demand delivery")
 
     return routes, obj
