@@ -3,7 +3,7 @@ import itertools as it
 import numpy as np
 from utils import Seq, utils
 from BnP.Node import Node
-import os
+from os import path
 import heapq
 
 
@@ -69,8 +69,8 @@ def print_updates(start, Filename):
     print(f"{round(Node.LowerBound, 2)}\t{round(Node.UpperBound, 2)}\t{Node.Gap}\t{Elapsed_time}\t{Node.time2UB}")
 
     results = [Node.UpperBound, Node.LowerBound, Node.Gap, Node.time2UB, Elapsed_time]
-    OWD = os.getcwd()
-    utils.save_object(results, OWD + f"/Data/updated_results/new_branching/{Filename}")
+    BASE_DIR = path.dirname(path.dirname(path.dirname(path.abspath(__file__))))
+    utils.write_log(results, f"{BASE_DIR}/Data/Results/{Filename}.txt")
 
 
 def branch_and_bound(Data, MaxTime, Filename):
@@ -102,7 +102,7 @@ def branch_and_bound(Data, MaxTime, Filename):
         print_updates(start, Filename)
         UB, LB, time2UB, Gap = Node.UpperBound, Node.LowerBound, Node.time2UB, Node.Gap
         Node.reset()
-        return UB, LB, Gap, time2UB, Elapsed_time
+        return str(round(UB,3)), str(round(LB,3)), str(round(Gap,3)), str(round(time2UB,3)), str(round(Elapsed_time,3)), str(Node.NodeCount)
 
     while len(stack) and Node.Gap >= 0.012 and Elapsed_time < MaxTime:
 
@@ -147,4 +147,4 @@ def branch_and_bound(Data, MaxTime, Filename):
     Elapsed_time = round(time.time() - start, 3)
     UB, LB, time2UB, Gap = Node.UpperBound, Node.LowerBound, Node.time2UB, Node.Gap
     Node.reset()
-    return UB, LB, Gap, time2UB, Elapsed_time
+    return str(round(UB,3)), str(round(LB,3)), str(round(Gap,3)), str(round(time2UB,3)), str(round(Elapsed_time,3)), str(Node.NodeCount)

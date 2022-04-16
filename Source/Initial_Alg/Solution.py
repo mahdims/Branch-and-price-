@@ -199,7 +199,7 @@ def Optimal_quantity(Data, routes):
         D_rate[i] = [n/Data.G.nodes[j]["demand"] for j, n in enumerate(r) if j != 0]
         D_correct[i] = all([n <= Data.G.nodes[j]["demand"] for j, n in enumerate(r) if j != 0])
         D_sum.append(sum(r))
-        if D_sum[i] < C/Data.total_demand * r_demand[i] and round(D_sum[i],0) != Q:
+        if round(D_sum[i],2) < round(C/Data.total_demand * r_demand[i],2) and round(D_sum[i],0) != Q:
             print("The assigned deliveries in the initial algorithm has some problem")
         if not D_correct[i]:
             print("There is a problem , more than demand delivery")

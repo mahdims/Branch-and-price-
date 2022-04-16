@@ -4,6 +4,7 @@ import math
 import pickle as Pick
 import random as rand
 import itertools as it
+from os import path
 # import Real_Input
 from utils import Route_delivery as RD
 
@@ -284,7 +285,7 @@ def roul_wheel(dic):
 
 
 def data_preparation(Case_name, NN, M, inst):
-
+    BASE_DIR = path.dirname(path.dirname(path.dirname(path.abspath(__file__))))
     if Case_name == "Van":
         if inst <= 5:
             ins_type = "T"
@@ -293,7 +294,7 @@ def data_preparation(Case_name, NN, M, inst):
         else:
             ins_type = "VTL"
         File_name = '%s_%d_%d_%d' % (Case_name, NN, M, inst)
-        R_dic = read_object(f"./Data/{Case_name}/TObj_R_Van{NN}")
+        R_dic = read_object(f"{BASE_DIR}/Data/{Case_name}/TObj_R_Van{NN}")
 
     elif Case_name == "Kartal":
         if inst <= 10:
@@ -305,9 +306,9 @@ def data_preparation(Case_name, NN, M, inst):
             ins_type = "VTL"
             inst -= 20
         File_name = '%s_%s_%d' % (Case_name, ins_type, inst)
-        R_dic = read_object(f"./Data/{Case_name}/TObj_R_Kartal")
+        R_dic = read_object(f"{BASE_DIR}/Data/{Case_name}/TObj_R_Kartal")
 
-    Data = read_object(f'./Data/{Case_name}/{File_name}')
+    Data = read_object(f'{BASE_DIR}/Data/{Case_name}/{File_name}')
     R = R_dic[File_name]
     Data.R = R
 
@@ -337,6 +338,14 @@ def data_preparation(Case_name, NN, M, inst):
     Data.Total_dis_epsilon = int(0.85 * M * Data.Maxtour)
 
     return Data, File_name
+
+
+def write_log(results, path_2_file):
+    content = [str(round(a,3))+" " for a in results]
+    content = "".join(content)+"\r\n"
+    f = open(path_2_file, "a+")
+    f.write(content)
+    f.close()
 
 
 def save_object(obj, filename):

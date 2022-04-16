@@ -282,7 +282,7 @@ def create_new_columns(Data, R, All_seq, nodes2keep, nodes2avoid, Duals, Col_dic
 
     if we_found_cols:
         flag = "RECALC"
-        return flag, Col_dic, All_new_cols_IDs, 10
+        return flag, Col_dic, All_new_cols_IDs, -10
     else:
         # Next, we try the GRASP heuristic
         (Heuristic_works, heuristic_paths, heuristic_path_value) = PR.GRASP(Data, All_seq, nodes2keep,
@@ -333,6 +333,35 @@ def create_new_columns(Data, R, All_seq, nodes2keep, nodes2avoid, Duals, Col_dic
                 else:
                     continue
             return flag, Col_dic, All_new_cols_IDs, Sub.objVal
+
+
+def optimality_cut_seperation(Data, Col_dic, Y):
+    cut_counter = 0
+
+    master_sol = list(Y.items())
+    for inx1 in range(len(master_sol)):
+        val1 = master_sol[inx1][1]
+        if val1 < 0.00001:
+            continue
+        r1, rdp1 = master_sol[inx1][0]
+        total_del1 = sum(Col_dic[r1].RDP[rdp1])
+        if round(total_del1,0) == Data.Q:
+            continue
+        beta1 = total_del1/Col_dic[r1].total_demand
+
+        for inx2 in range(inx1+1, len(master_sol)):
+            val2 = master_sol[inx2][1]
+            if val2 < 0.00001:
+                continue
+            r2, rdp2 = master_sol[inx2][0]
+            total_del2 = sum(Col_dic[r2].RDP[rdp2])
+            if round(total_del2,0) == Data.Q:
+                continue
+            beta2 = total_del2 / Col_dic[r2].total_demand
+
+            if val1+val2 > 1 and round(beta1,5) != round(beta2,5):
+                cut_counter += 1
+    print(f"Number of cuts could be add: {cut_counter}")
 
 
 def ColumnGen(Data, All_seq, R, RMP, G_in, Col_dic, dis, nodes2keep, nodes2avoid, Sub, cuts):
@@ -388,5 +417,6 @@ def ColumnGen(Data, All_seq, R, RMP, G_in, Col_dic, dis, nodes2keep, nodes2avoid
         RMP.optimize()
 
     Y = Get_the_Y_variables(RMP)
+    optimality_cut_seperation(Data, Col_dic, Y)
     # print("Master Problem Optimal Value: %f" %RMP.objVal)
     return 1, RMP, RMP_objvals[-1], Y, Col_dic

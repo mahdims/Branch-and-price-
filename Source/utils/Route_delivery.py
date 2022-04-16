@@ -15,6 +15,7 @@ class RouteDel:
 
     def __init__(self, route, creator):
         self.route = route
+        self.total_demand = 0
         # I trust that sequence of nodes in path is correct (calculated by build_nodes)
         self.nodes_in_path = []
         self.build_nodes()
@@ -22,6 +23,7 @@ class RouteDel:
         self.travel_time = 0
         # We don't update the deliveris yet
         self.RDP = {}
+
         self.total_deliveries = 0
         self.violated_keeps = utils.keep_check(self, RouteDel.nodes2keep)
         self.violated_avoids = utils.avoid_check(self, RouteDel.nodes2avoid)
@@ -52,6 +54,7 @@ class RouteDel:
             self.nodes_in_path += self.route[0][1:]
         for n in self.route[1:-1]:
             self.nodes_in_path += n.string
+        self.total_demand = sum([RouteDel.Data.G.nodes[n]["demand"] for n in self.nodes_in_path])
 
     def calc_time(self, dis):
         self.travel_time = self.route[0].string_time

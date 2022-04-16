@@ -115,12 +115,12 @@ def constructive_alg(Data, All_seq, S_local):
     elif 1 < len(depot_sec) <= 2:
         print(depot_sec)
         current_path = Path.Path([depot_sec[0], All_seq[(NN + 1,)]])
-        del S_local[depot_sec[0]]
+        del S_local[tuple(depot_sec[0])]
     else:
         best_sec_with_depot = min(depot_sec[1:], key=lambda x: S_local[x])
         current_path = Path.Path([best_sec_with_depot, All_seq[(NN + 1,)]])
         for S in depot_sec[:-1]:
-            del S_local[S]
+            del S_local[tuple(S)]
 
     while S_local.values() and any([a <= 0 for a in S_local.values()]):
         # find the vertex with maximum profit
@@ -134,9 +134,9 @@ def constructive_alg(Data, All_seq, S_local):
         (v, Sv) = RCL1[inx]
 
         # find the best insertion position for selected vertex
-        move, move_value_change, move_time_change = current_path.Best_move(v)
+        move, move_value_change, move_time_change = current_path.Best_move(All_seq[v])
 
-        del S_local[v]
+        del S_local[tuple(v)]
 
         # if possible insert the vertex to the route
         if move:
@@ -144,11 +144,9 @@ def constructive_alg(Data, All_seq, S_local):
             seq = All_seq[nodes]
             current_path.insert(inx, seq, move_value_change, move_time_change)
             any_luck = 1
-        # remove the selected vertex from further selections
-            try:
-                del S_local[All_seq[move[1][::-1]]]
-            except KeyError:
-                pass
+            # remove the selected vertex from further selections
+            if len(move[1]) >= 2 and move[1][::-1] in S_local.keys():
+                del S_local[move[1][::-1]]
 
     return current_path, any_luck
 
@@ -251,7 +249,7 @@ def GRASP(Data, All_seq, edges2keep, edges2avoid, Duals, R):
     for key, sec in All_seq.items():
         if key != (0,) and key != (NN + 1,):
             # Since it just used in constructive alg then we account for pi3 as well
-            S[sec] = sum(
+            S[key] = sum(
                 [Path.Path.Node_Value[i] - Duals[3][i - 1] for i in sec.string if i != 0])
 
             # Adding the edge2keep duals
