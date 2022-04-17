@@ -8,7 +8,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import pickle as pk
 
-
+from BnP.Master_int import Solve_IMP
 from Initial_Alg import Alg
 from Column_Gen import ColumnGeneration as CG
 from Column_Gen import Master, Sub_model
@@ -58,7 +58,13 @@ class Node:
             if self.feasible:
                 # solve with column generation
                 self.solve()
-                # self.Upper_bound_finder()
+                # Find Upper_bound by solving integer Master
+                if Node.NodeCount % Node.Data.IMP_frequency == 0:
+                    intObj, IMP_selected_RD = Solve_IMP(Node.Data, Node.R, Node.UpperBound, self.Col_dic)
+                    if intObj < self.upper_bound and len(IMP_selected_RD) != 0:
+                        self.upper_bound = intObj
+                        self.Int_route = [self.Col_dic[r][d] for r, d in IMP_selected_RD]
+                        print(f"At node {self.ID} Integer Master found an UB {intObj}")
             else:
                 pass
                 self.feasible = 0

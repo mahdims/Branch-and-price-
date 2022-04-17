@@ -104,9 +104,10 @@ def Set_sub_obj(Data, R, Gc, dis, Duals, Sub):
 
     expr = - quicksum(Sub._varQ[i] * (1 + Inv + quicksum(
         (linear[i - 1, j - 1] - linear[j - 1, i - 1]) * Gc.nodes[j]["demand"] for j in Gc.nodes)) for i in Gc.nodes) \
-        - quicksum(Sub._varX[i, j] * dis[(i, j)] for (i, j) in Sub._varX.keys() if j != NN + 1) * (totaltime + Data.Gamma / R) \
-        - quicksum(Sub._varA[i] * visit[i - 1] for i in Gc.nodes) \
-        - vehicle
+           - quicksum(Sub._varX[i, j] * dis[(i, j)] for (i, j) in Sub._varX.keys() if j != NN + 1) * (
+                       totaltime + Data.Gamma / R) \
+           - quicksum(Sub._varA[i] * visit[i - 1] for i in Gc.nodes) \
+           - vehicle
 
     '''
     for (i, j) in edges2keep["E"]:
@@ -137,7 +138,7 @@ def Calculate_the_subproblem_obj(Data, R, Duals, col, q, cuts):
     if col.nodes_in_path:
         a_var[np.array(col.nodes_in_path) - 1] = 1
     Value = sum((- Pi1.dot(d) + d.dot(Pi1)) * q) - col.travel_time * (Pi2 + gamma / R) - Pi3.dot(a_var) - \
-        Pi4 - (Pi5 + 1) * sum(q)
+            Pi4 - (Pi5 + 1) * sum(q)
 
     # the dual variables added because of the edges 2 keep
     for e in Pi6.keys():
@@ -272,7 +273,8 @@ def Get_alternative_sols(Data, Sub):
     return MIPSolutions
 
 
-def create_new_columns(Data, R, All_seq, nodes2keep, nodes2avoid, Duals, Col_dic,Gc, dis, Sub,  cuts):
+# @profile
+def create_new_columns(Data, R, All_seq, nodes2keep, nodes2avoid, Duals, Col_dic, Gc, dis, Sub, cuts):
     # First, we create new delivery for existing routes in hope of finding reduce negative columns.
     # If not successful we run the GRASP heuristic
     # If not successful we run the Gurobi on pricing mathematical model
@@ -286,10 +288,10 @@ def create_new_columns(Data, R, All_seq, nodes2keep, nodes2avoid, Duals, Col_dic
     else:
         # Next, we try the GRASP heuristic
         (Heuristic_works, heuristic_paths, heuristic_path_value) = PR.GRASP(Data, All_seq, nodes2keep,
-                                                                                nodes2avoid, Duals, R)
+                                                                            nodes2avoid, Duals, R)
         # if the GRASP sol is too week just consider as non success
         if Heuristic_works:
-            if all([path.value> -0.01 for path in heuristic_paths]):
+            if all([path.value > -0.01 for path in heuristic_paths]):
                 Heuristic_works = 0
 
         if Heuristic_works:
@@ -302,7 +304,7 @@ def create_new_columns(Data, R, All_seq, nodes2keep, nodes2avoid, Duals, Col_dic
                 if indicator == 1:
                     RDP_ID = 1
                     Col_dic[Col_ID] = New_Route
-                    All_new_cols_IDs.append((Col_ID,RDP_ID ))
+                    All_new_cols_IDs.append((Col_ID, RDP_ID))
                 elif indicator == 2:
                     RDP_ID = Col_dic[Col_ID].add_RDP(New_Route.RDP[1])
                     All_new_cols_IDs.append((Col_ID, RDP_ID))
@@ -313,11 +315,13 @@ def create_new_columns(Data, R, All_seq, nodes2keep, nodes2avoid, Duals, Col_dic
 
         else:
             # Next Solve it with mathematical model
+            Sub.reset()
             Sub = Set_sub_obj(Data, R, Gc, dis, Duals, Sub)
             Sub.optimize(subtourelim)
             if Sub.status != 2:
-                # @TODO What that even means? is the node infeasible?
-                sys.exit("infeasible sub problem by model")
+                print("infeasible sub problem by model")
+                return "Sub_Inf", Col_dic, All_new_cols_IDs, 0
+
             flag = "GUROBI"
             print("Sub Problem optimal value: %f" % Sub.objVal)
             MIP_solutions = Get_alternative_sols(Data, Sub)
@@ -345,21 +349,21 @@ def optimality_cut_seperation(Data, Col_dic, Y):
             continue
         r1, rdp1 = master_sol[inx1][0]
         total_del1 = sum(Col_dic[r1].RDP[rdp1])
-        if round(total_del1,0) == Data.Q:
+        if round(total_del1, 0) == Data.Q:
             continue
-        beta1 = total_del1/Col_dic[r1].total_demand
+        beta1 = total_del1 / Col_dic[r1].total_demand
 
-        for inx2 in range(inx1+1, len(master_sol)):
+        for inx2 in range(inx1 + 1, len(master_sol)):
             val2 = master_sol[inx2][1]
             if val2 < 0.00001:
                 continue
             r2, rdp2 = master_sol[inx2][0]
             total_del2 = sum(Col_dic[r2].RDP[rdp2])
-            if round(total_del2,0) == Data.Q:
+            if round(total_del2, 0) == Data.Q:
                 continue
             beta2 = total_del2 / Col_dic[r2].total_demand
 
-            if val1+val2 > 1 and round(beta1,5) != round(beta2,5):
+            if val1 + val2 > 1 and round(beta1, 5) != round(beta2, 5):
                 cut_counter += 1
     print(f"Number of cuts could be add: {cut_counter}")
 
@@ -376,7 +380,7 @@ def ColumnGen(Data, All_seq, R, RMP, G_in, Col_dic, dis, nodes2keep, nodes2avoid
     RMP_objvals.append(133)
     tail_counter = 0
 
-    while Subobj < Stoping_R_cost and tail_counter < 1000:
+    while Subobj < Stoping_R_cost and tail_counter < 100:
         # STEP1: Solve the Master problem
         SolvedBy = ""
         RMP.reset()
@@ -405,6 +409,8 @@ def ColumnGen(Data, All_seq, R, RMP, G_in, Col_dic, dis, nodes2keep, nodes2avoid
             create_new_columns(Data, R, All_seq, nodes2keep, nodes2avoid, Duals, Col_dic, Gc, dis, Sub, cuts)
         # RMP, Col_dic = Delete_the_unused_columns(RMP, Col_dic)
 
+        if SolvedBy == "Sub_Inf":  # Once the sub problem is infeasible (by Gurobi) stop column generation
+            break
         if Subobj > Stoping_R_cost and SolvedBy == "GUROBI":
             continue
 

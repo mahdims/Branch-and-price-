@@ -19,21 +19,21 @@ def save_the_results(res):
 
 if __name__ == "__main__":
     OWD = os.getcwd()
-    # Case_name = "Van"
-    Case_name = "Kartal"
+    Case_name = "Van"
+    #Case_name = "Kartal"
 
-    for NN in [13]: # [60,30,15]:
+    for NN in [15]:  # [60,30,15]:
         Time = {15: 1000, 13: 1000, 30: 1800, 60: 3600}
         MaxTime = Time[NN]
         M = {60: 9, 30: 5, 15: 3, 13: 3}
-        for inst in [14]:
+        for inst in [6]:
             Data, File_name = utils.data_preparation(Case_name, NN, M[NN], inst)
-
+            Data = utils.set_parameters(Data)
             # TEST
-            #Data.M = 5
+            # Data.M = 5
             # MQ = Data.M * Data.Q
             # Supply = Data.G.nodes[0]["supply"]
-            Data.Q = 20000
+            # Data.Q = 20000
             # END TEST
 
             print(f"We are solving {File_name}")

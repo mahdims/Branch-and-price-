@@ -313,7 +313,7 @@ def build_a_random_sol(Data,All_seq, dis, alpha, beta):
     return new_sol
 
 
-def Initial_feasibleSol(Data,All_seq,  dis, keeps, avoids, number_of_sols):
+def Initial_feasibleSol(Data, All_seq,  dis, keeps, avoids, number_of_sols):
     Data.Penalty = max(dis.values()) * 10
     RD.RouteDel.nodes2keep = keeps["E"]
     RD.RouteDel.nodes2avoid = avoids["E"]

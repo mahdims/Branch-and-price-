@@ -277,13 +277,18 @@ def Quantities_assignment_new(Data, Nodes_value, node_set):
     q_heuristic = {}
     route_D = sum([Data.G.nodes[i]["demand"] for i in node_set])
     s_node = min(node_set, key=lambda i: Data.G.nodes[i]["demand"])
-    modified_obj = sum([Nodes_value[i] * Data.G.nodes[i]["demand"] / Data.G.nodes[s_node]["demand"] for i in node_set])
 
-    if modified_obj < 0:
-        q_heuristic[s_node] = min(Data.G.nodes[s_node]["demand"],
-                                  Data.G.nodes[s_node]["demand"] * float(Data.Q) / route_D)
+    if route_D * (Data.G.nodes[0]["supply"] / Data.total_demand) >= Data.Q:
+        q_heuristic[s_node] = Data.G.nodes[s_node]["demand"] * float(Data.Q) / route_D
+
     else:
-        q_heuristic[s_node] = (Data.G.nodes[0]["supply"] / Data.total_demand) * Data.G.nodes[s_node]["demand"]
+        modified_obj = sum([Nodes_value[i] * Data.G.nodes[i]["demand"] / Data.G.nodes[s_node]["demand"] for i in node_set])
+
+        if modified_obj < 0:
+            q_heuristic[s_node] = min(Data.G.nodes[s_node]["demand"],
+                                      Data.G.nodes[s_node]["demand"] * float(Data.Q) / route_D)
+        else:
+            q_heuristic[s_node] = (Data.G.nodes[0]["supply"] / Data.total_demand) * Data.G.nodes[s_node]["demand"]
 
     for i in node_set:
         if i not in q_heuristic.keys():

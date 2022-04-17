@@ -61,6 +61,7 @@ def SubProblem(Data, G, dis, edges2keep=None, edges2avoid=None):
 
     Sub.Params.OutputFlag = 0
     Sub.params.LazyConstraints = 1
+    Sub.params.TimeLimit = int(1.5 * Data.NN)
     Sub.params.MIPGapAbs = 0.0000001
     return Sub
 

@@ -259,11 +259,10 @@ def GRASP(Data, All_seq, edges2keep, edges2avoid, Duals, R):
             # However, we store the values for sequence just according to Pi1 and Pi5
             sec.value = sum([Path.Path.Node_Value[i] for i in sec.string if i != 0])
 
-
-    # Set of generated paths
+    #  Set of generated paths
     All_negative_paths = []
-
-    for _ in range(20):
+    N_O_route = np.random.choice([5, 10, 20])
+    for _ in range(N_O_route):
         # construct the initial path
         new_S = copy.deepcopy(S)
         current_path, any_luck = constructive_alg(Data, All_seq, new_S)

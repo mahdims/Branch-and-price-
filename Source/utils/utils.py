@@ -17,16 +17,16 @@ def demand_proportional(Data, route_del):
         for n in range(1, Data.NN):
             n_demand = Data.G.nodes[n]["demand"]
             route_d += n_demand * (int(val[n]) != 0)
-            new_ratio = round(val[n]/n_demand, 4)
+            new_ratio = round(val[n]/n_demand, 3)
             if new_ratio != 0:
                 if ratio == 0:
                     ratio = new_ratio
                 elif ratio != new_ratio:
                     print(f"Not demand proportional {route_del.creator}")
-                    sys.exit("The new valid inequality is not respected")
+                    #sys.exit("The new valid inequality is not respected")
 
         total_del = round(sum(val),0)
-        if route_d * Data.C> Data.Q:
+        if route_d * Data.C > Data.Q:
             if total_del != Data.Q:
                 print(f"Not equal to Q {route_del.creator}")
                 sys.exit("The new valid inequality is not respected")
@@ -282,6 +282,13 @@ def roul_wheel(dic):
                 j = j + 1
 
     return spin(roulette_wheel)
+
+
+def set_parameters(Data):
+
+    Data.IMP_frequency = 4
+
+    return Data
 
 
 def data_preparation(Case_name, NN, M, inst):
