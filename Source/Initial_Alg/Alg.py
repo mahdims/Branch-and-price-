@@ -229,7 +229,7 @@ def TabuRoute(Data, All_seq, dis, Pars, keeps, avoids, CurrentSol):
         # Verify the infeasibility of routes
         Route_infeasible = [not r.time_F or not r.cap_F or not r.keep_avoid_F for r in CurrentSol.routes]
         # score the sequences based on their appearance in infeasible / feasible routes
-        Select_probability = dict([(n, 3* Route_infeasible[inx] + 1 + sum(f.values()) - f[n[0]])
+        Select_probability = dict([(n, 3 * Route_infeasible[inx] + 1 + sum(f.values()) - f[n[0]])
                                    for inx, r in enumerate(CurrentSol.routes) for n in r.route[1:-1]])
         selected_seq = set()
         while len(selected_seq) < q:
@@ -250,7 +250,8 @@ def TabuRoute(Data, All_seq, dis, Pars, keeps, avoids, CurrentSol):
 
                 P_Sol = CurrentSol.Best_insertion(dis, alpha, beta, v, origin_seq, r_id)
                 # before you do anything else pick  this solution
-                if P_Sol.feasible0 and P_Sol.obj < Best_F0_sol.obj: # feasible without considering avoiding and keeping edges
+                # feasible without considering avoiding and keeping edges
+                if P_Sol.feasible0 and P_Sol.obj < Best_F0_sol.obj:
                     Best_F0_sol = copy.deepcopy(P_Sol)
 
                 # Check if the move is Tabu
@@ -296,10 +297,10 @@ def TabuRoute(Data, All_seq, dis, Pars, keeps, avoids, CurrentSol):
             CurrentSol = greedy_build(Data, All_seq,dis, alpha, beta,flag="random")
             No_Change_cont = 0
 
-    #print('Iteration %d : Best F solution Obj = %s Total time = %s ' % (it, Best_F_Sol.obj, Best_F_Sol.total_time))
+    # print('Iteration %d : Best F solution Obj = %s Total time = %s ' % (it, Best_F_Sol.obj, Best_F_Sol.total_time))
     if not Best_F0_sol.feasible:
         Best_F0_sol = 0
-        #print(f"I found even better feasible solution with obj = {Best_F0_sol.obj}")
+        # print(f"I found even better feasible solution with obj = {Best_F0_sol.obj}")
         pass
     return Best_F_Sol, Best_F0_sol
 

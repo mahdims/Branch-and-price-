@@ -287,7 +287,7 @@ def roul_wheel(dic):
 def set_parameters(Data):
 
     Data.IMP_frequency = 4
-
+    Data.N_Added_GRASP = 10
     return Data
 
 
@@ -347,11 +347,15 @@ def data_preparation(Case_name, NN, M, inst):
     return Data, File_name
 
 
-def write_log(results, path_2_file):
-    content = [str(round(a,3))+" " for a in results]
+def write_log(results, path_2_file, Routes=[], RDPs=[]):
+    content = [str(round(a, 3))+" " for a in results]
     content = "".join(content)+"\r\n"
     f = open(path_2_file, "a+")
     f.write(content)
+    for inx, r in enumerate(Routes):
+        f.write(" ".join([str(0)] + [str(a) for a in r.nodes_in_path]) + "\n")
+        if len(RDPs) != 0:
+            f.write(" ".join([str(a) for a in RDPs[inx]]) + "\n")
     f.close()
 
 

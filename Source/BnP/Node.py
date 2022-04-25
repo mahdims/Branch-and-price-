@@ -63,7 +63,8 @@ class Node:
                     intObj, IMP_selected_RD = Solve_IMP(Node.Data, Node.R, Node.UpperBound, self.Col_dic)
                     if intObj < self.upper_bound and len(IMP_selected_RD) != 0:
                         self.upper_bound = intObj
-                        self.Int_route = [self.Col_dic[r][d] for r, d in IMP_selected_RD]
+                        self.Int_route = [self.Col_dic[r] for r, d in IMP_selected_RD]
+                        self.Int_RDP = [self.Col_dic[r].RDP[d] for r, d in IMP_selected_RD]
                         print(f"At node {self.ID} Integer Master found an UB {intObj}")
             else:
                 pass
@@ -103,6 +104,7 @@ class Node:
                 if sol.obj < self.upper_bound:
                     self.upper_bound = sol.obj
                     self.Int_route = sol.routes
+                    self.Int_RDP = [r.RDP[1] for r in sol.routes]
                 new_routes += sol.routes
         else:
             print("Initial heuristic says Infeasible")
@@ -111,6 +113,7 @@ class Node:
             if F0_sol.obj < self.upper_bound:
                 self.upper_bound = F0_sol.obj
                 self.Int_route = F0_sol.routes
+                self.Int_RDP = [r.RDP[1] for r in F0_sol.routes]
                 # new_routes += F0_sol.routes
 
         # Add the newly generated columns to the Col_dic
@@ -150,23 +153,25 @@ class Node:
         while 1:
             self.feasible, RMP, self.lower_bound, self.Y, self.Col_dic = CG.ColumnGen(Node.Data, self.All_seq, Node.R, RMP, self.G, self.Col_dic,
                                                                            self.Dis, self.nodes2keep["E"], self.nodes2avoid["E"], Sub, self.cuts)
-            utils.check_branching(Node.Data, self.Col_dic, self.nodes2avoid["E"], self.nodes2keep["E"])
-            for key, col in self.Col_dic.items():
-                utils.demand_proportional(Node.Data, col)
-
+            # TEST
+            # utils.check_branching(Node.Data, self.Col_dic, self.nodes2avoid["E"], self.nodes2keep["E"])
+            #for key, col in self.Col_dic.items():
+            #    utils.demand_proportional(Node.Data, col)
+            #END TEST
             if not self.feasible:
                 break
             print(f"Current lowerbound in Node {self.ID}: {self.lower_bound}")
+            break
             # Add cuts
-            new_subrow_cuts = []
+            # new_subrow_cuts = []
             # new_subrow_cuts = Cuts.separation_subrow(Node.Data, self.Col_dic, self.Y, self.cuts)
-            self.cuts += new_subrow_cuts
-            if len(new_subrow_cuts):
-                print(f"Number of cuts added : {len(new_subrow_cuts)}")
-                RMP = Cuts.update_master_subrow_cuts(RMP, self.Col_dic, len(self.cuts), new_subrow_cuts)
-                Sub = Cuts.update_subproblem_with_cuts(Sub, len(self.cuts), new_subrow_cuts)
-            else:
-                break
+            #self.cuts += new_subrow_cuts
+            # if len(new_subrow_cuts):
+            #    print(f"Number of cuts added : {len(new_subrow_cuts)}")
+            #    RMP = Cuts.update_master_subrow_cuts(RMP, self.Col_dic, len(self.cuts), new_subrow_cuts)
+            #    Sub = Cuts.update_subproblem_with_cuts(Sub, len(self.cuts), new_subrow_cuts)
+            #else:
+            #    break
 
         self.Col_runtime = time()-start
         if self.feasible:
@@ -275,6 +280,7 @@ class Node:
         if indictor:
             self.upper_bound = self.lower_bound
             self.Int_route = [self.Col_dic[i] for (i, j), val in self.Y.items() if val > 0.9]
+            self.Int_RDP = [self.Col_dic[i].RDP[j] for (i, j), val in self.Y.items() if val > 0.9]
 
         return indictor
     

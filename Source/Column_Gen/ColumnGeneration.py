@@ -1,4 +1,6 @@
 import itertools as it
+import time
+
 import networkx as nx
 import numpy as np
 import sys
@@ -95,8 +97,6 @@ def get_Duals(NN, RMP):
 
 
 def Set_sub_obj(Data, R, Gc, dis, Duals, Sub):
-    # @TODO The sub problem objective miscalculates !!!!!!!! Not for all solutions but for some solutions!
-
     Sub.reset(0)
 
     NN = Data.NN
@@ -159,6 +159,7 @@ def Calculate_the_subproblem_obj(Data, R, Duals, col, q, cuts):
 def Columns_with_negitive_costs(Data, R, Duals, Col_dic, cuts):
     indicator = 0
     All_new_cols_IDs = []
+    removable_columns = []
     Nodes_value = PR.Node_value_calc(Data, Duals)
     for col_ID, col in Col_dic.items():
         # Calculate Q for the problem with valid inequality
@@ -171,7 +172,9 @@ def Columns_with_negitive_costs(Data, R, Duals, Col_dic, cuts):
             indicator = 1
             RDP_ID = col.add_RDP(New_RDP)
             All_new_cols_IDs.append((col_ID, RDP_ID))
-    return indicator, Col_dic, All_new_cols_IDs
+            removable_columns += [(col_ID, old_inx) for old_inx in range(1, RDP_ID)]
+
+    return indicator, Col_dic, All_new_cols_IDs, removable_columns
 
 
 def Update_Master_problem(Gc, R, cuts, RMP, Col_dic, Col_ID, RDP_ID):
@@ -226,7 +229,7 @@ def Update_Master_problem(Gc, R, cuts, RMP, Col_dic, Col_ID, RDP_ID):
     return RMP
 
 
-def Delete_the_unused_columns(RMP, Col_dic):
+def Delete_the_unused_columns(RMP, Duals, Col_dic):
     # TODO this function is not in use anymore and have to be adopted before back to operation
     Y = Get_the_Y_variables(RMP)
     for key, val in Y.items():
@@ -235,6 +238,20 @@ def Delete_the_unused_columns(RMP, Col_dic):
             RMP.delVar(key)
 
     return RMP, Col_dic
+
+
+def remove_Var_from_RMP(RMP, Var_inxs):
+    RMP.update()
+
+    for i,j in Var_inxs:
+        var_name = f"y[{i},{j}]"
+        variable = RMP.getVarByName(var_name)
+        if variable:
+            RMP.remove(variable)
+
+    RMP.update()
+    return  RMP
+
 
 
 def Get_the_Y_variables(RMP):
@@ -280,15 +297,18 @@ def create_new_columns(Data, R, All_seq, nodes2keep, nodes2avoid, Duals, Col_dic
     # If not successful we run the Gurobi on pricing mathematical model
     flag = ''
     All_new_cols_IDs = []
-    we_found_cols, Col_dic, All_new_cols_IDs = Columns_with_negitive_costs(Data, R, Duals, Col_dic, cuts)
+    cols_2_remove = []
+    we_found_cols, Col_dic, All_new_cols_IDs, cols_2_remove = Columns_with_negitive_costs(Data, R, Duals, Col_dic, cuts)
 
     if we_found_cols:
         flag = "RECALC"
-        return flag, Col_dic, All_new_cols_IDs, -10
+        return flag, Col_dic, All_new_cols_IDs,cols_2_remove, -10
     else:
         # Next, we try the GRASP heuristic
+        GRASP_S_time = time.time()
         (Heuristic_works, heuristic_paths, heuristic_path_value) = PR.GRASP(Data, All_seq, nodes2keep,
                                                                             nodes2avoid, Duals, R)
+        print(f"GRASP EXE time: {time.time() - GRASP_S_time}")
         # if the GRASP sol is too week just consider as non success
         if Heuristic_works:
             if all([path.value > -0.01 for path in heuristic_paths]):
@@ -311,7 +331,7 @@ def create_new_columns(Data, R, All_seq, nodes2keep, nodes2avoid, Duals, Col_dic
                 else:
                     continue
 
-            return flag, Col_dic, All_new_cols_IDs, -10
+            return flag, Col_dic, All_new_cols_IDs, cols_2_remove, -10
 
         else:
             # Next Solve it with mathematical model
@@ -320,9 +340,10 @@ def create_new_columns(Data, R, All_seq, nodes2keep, nodes2avoid, Duals, Col_dic
             Sub.optimize(subtourelim)
             if Sub.status != 2:
                 print("infeasible sub problem by model")
-                return "Sub_Inf", Col_dic, All_new_cols_IDs, 0
+                return "Sub_Inf", Col_dic, All_new_cols_IDs, cols_2_remove,  0
 
             flag = "GUROBI"
+            print(f"Sub Problem variables{Sub.NumVars} and runtime {Sub.Runtime}")
             print("Sub Problem optimal value: %f" % Sub.objVal)
             MIP_solutions = Get_alternative_sols(Data, Sub)
             for New_Route in MIP_solutions:
@@ -336,10 +357,11 @@ def create_new_columns(Data, R, All_seq, nodes2keep, nodes2avoid, Duals, Col_dic
                     All_new_cols_IDs.append((Col_ID, RDP_ID))
                 else:
                     continue
-            return flag, Col_dic, All_new_cols_IDs, Sub.objVal
+            return flag, Col_dic, All_new_cols_IDs, cols_2_remove, Sub.objVal
 
 
 def optimality_cut_seperation(Data, Col_dic, Y):
+    # Currently, the function is written to count the number of possible cuts -> Thus, shouldn't be use in final version
     cut_counter = 0
 
     master_sol = list(Y.items())
@@ -385,7 +407,8 @@ def ColumnGen(Data, All_seq, R, RMP, G_in, Col_dic, dis, nodes2keep, nodes2avoid
         SolvedBy = ""
         RMP.reset()
         RMP.optimize()
-        RMP.write("Master0.lp")
+        print(f"Time to solve Master problem with {RMP.NumVars} vars: {RMP.Runtime}")
+        # RMP.write("Master0.lp")
         if RMP.status != 2:
             # Report that the problem in current node is infeasible
             print("Infeasible Master Problem")
@@ -405,9 +428,11 @@ def ColumnGen(Data, All_seq, R, RMP, G_in, Col_dic, dis, nodes2keep, nodes2avoid
         Duals = get_Duals(NN, RMP)
 
         # STEP3: Find the reduced cost columns
-        SolvedBy, Col_dic, All_new_cols_IDs, Subobj = \
+        SolvedBy, Col_dic, All_new_cols_IDs, cols_2_remove, Subobj = \
             create_new_columns(Data, R, All_seq, nodes2keep, nodes2avoid, Duals, Col_dic, Gc, dis, Sub, cuts)
+        # TEST remove all the route-deliveries that we know we have better Q
         # RMP, Col_dic = Delete_the_unused_columns(RMP, Col_dic)
+        RMP = remove_Var_from_RMP(RMP, cols_2_remove)
 
         if SolvedBy == "Sub_Inf":  # Once the sub problem is infeasible (by Gurobi) stop column generation
             break
@@ -423,6 +448,6 @@ def ColumnGen(Data, All_seq, R, RMP, G_in, Col_dic, dis, nodes2keep, nodes2avoid
         RMP.optimize()
 
     Y = Get_the_Y_variables(RMP)
-    optimality_cut_seperation(Data, Col_dic, Y)
+    # optimality_cut_seperation(Data, Col_dic, Y)
     # print("Master Problem Optimal Value: %f" %RMP.objVal)
     return 1, RMP, RMP_objvals[-1], Y, Col_dic

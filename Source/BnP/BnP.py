@@ -68,9 +68,9 @@ def print_updates(start, Filename):
     print("LB       // UB       // GAP   //Elapsed T // Time_2_best")
     print(f"{round(Node.LowerBound, 2)}\t{round(Node.UpperBound, 2)}\t{Node.Gap}\t{Elapsed_time}\t{Node.time2UB}")
 
-    results = [Node.UpperBound, Node.LowerBound, Node.Gap, Node.time2UB, Elapsed_time]
+    results = [Node.LowerBound, Node.UpperBound, Node.Gap, Node.time2UB, Elapsed_time]
     BASE_DIR = path.dirname(path.dirname(path.dirname(path.abspath(__file__))))
-    utils.write_log(results, f"{BASE_DIR}/Data/Results/{Filename}.txt")
+    utils.write_log(results, f"{BASE_DIR}/Data/Results/{Filename}.txt", Node.best_Route, Node.best_RDP)
 
 
 def branch_and_bound(Data, MaxTime, Filename):
@@ -104,14 +104,14 @@ def branch_and_bound(Data, MaxTime, Filename):
         Node.reset()
         return str(round(UB,3)), str(round(LB,3)), str(round(Gap,3)), str(round(time2UB,3)), str(round(Elapsed_time,3)), str(Node.NodeCount)
 
-    while len(stack) and Node.Gap >= 0.012 and Elapsed_time < MaxTime:
+    while len(stack) and Node.Gap >= 0.009 and Elapsed_time < MaxTime:
 
         Elapsed_time = round(time.time() - start, 3)
 
         print_updates(start, Filename)
 
         # best first search strategy
-        print([(n.level, round(n.lower_bound,3)) for n in heapq.nsmallest(4, stack)])
+        print([(n.level, round(n.lower_bound, 3)) for n in heapq.nsmallest(4, stack)])
         node = heapq.heappop(stack)
 
         # Fathom by bound

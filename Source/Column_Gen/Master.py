@@ -37,7 +37,7 @@ def MasterModel(Data, Col_dic, R):
     #    edges = RMP.addConstrs((quicksum(y[r, q] * utils.edge_in_route(edge, Col_dic[r]) for r, q in y.keys()) == 1
     #                            for edge in edge2keep["E"]), name="edge2keep")
     
-    RMP.write("Master0.lp")
+    # RMP.write("Master0.lp")
     RMP.Params.OutputFlag = 0
     RMP.update()
     return RMP

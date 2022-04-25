@@ -263,6 +263,7 @@ def GRASP(Data, All_seq, edges2keep, edges2avoid, Duals, R):
     All_negative_paths = []
     N_O_route = np.random.choice([5, 10, 20])
     for _ in range(N_O_route):
+        # print("--------------- GRASP next restart ----------------")
         # construct the initial path
         new_S = copy.deepcopy(S)
         current_path, any_luck = constructive_alg(Data, All_seq, new_S)
@@ -273,18 +274,25 @@ def GRASP(Data, All_seq, edges2keep, edges2avoid, Duals, R):
         # current_path = Two_opt(current_path)
 
         improvement = 1
-        while improvement:
+        counter = 0
+        while improvement and counter < 10:
             if improvement and current_path.value < 0:
-                All_negative_paths.append(copy.deepcopy(current_path))
+                # Keep a fixed number of columns to add
+                if len(All_negative_paths) >= Data.N_Added_GRASP:
+                    del All_negative_paths[0]
+                    All_negative_paths.append(copy.deepcopy(current_path))
+                else:
+                    All_negative_paths.append(copy.deepcopy(current_path))
             # Improvement with local search
             # first stage "exchange"
             current_path, improvement1 = exchange_operator(Data, All_seq, current_path)
-
+            # print(f"GRASP after exchange: {current_path.value}")
             # second stage "insertion"
             current_path, improvement2 = insertion_operator(All_seq, current_path)
-
+            # print(f"GRASP after insertion: {current_path.value}")
             # current_path = Two_opt(current_path)
             improvement = improvement1 or improvement2
+            counter += 1
 
     if len(All_negative_paths) == 0:
         return 0, None, 100
