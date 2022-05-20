@@ -5,7 +5,7 @@ import pickle as Pick
 import random as rand
 import itertools as it
 from os import path
-# import Real_Input
+from datetime import datetime
 from utils import Route_delivery as RD
 
 
@@ -348,8 +348,9 @@ def data_preparation(Case_name, NN, M, inst):
 
 
 def write_log(results, path_2_file, Routes=[], RDPs=[]):
+    now_today = datetime.today().strftime('%Y-%m-%d %H:%M:%S')
     content = [str(round(a, 3))+" " for a in results]
-    content = "**"*10 + "\n" + "".join(content)+"\r\n"
+    content = "**"*5 + f"{now_today}" + "**"*5 + "\n" + "".join(content)+"\r\n"
     f = open(path_2_file, "a+")
     f.write(content)
     for inx, r in enumerate(Routes):
