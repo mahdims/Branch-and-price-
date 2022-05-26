@@ -22,7 +22,7 @@ if __name__ == "__main__":
         if len(file_names) == 0:
             print("Incorrect input!!")
     else:
-        file_names = glob.glob(path+"/Van_30_5_*")
+        file_names = glob.glob(path+"/Kartal_*")
 
     for file_path in file_names:
         instance_name = file_path.split("/")[-1]
@@ -34,5 +34,5 @@ if __name__ == "__main__":
                 print(f"{string}")
         else:
             string = instance_name + "\t"
-            string += "\t".join([str(round(a,3)) for a in result])
+            string += "\t".join([str(a) for a in result])
             print(f"{string}")

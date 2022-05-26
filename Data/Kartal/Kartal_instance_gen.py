@@ -44,15 +44,15 @@ def getdata(fname):
 
     NS = 2000
 
-    Dis = np.array([np.array(x).astype(np.float) for i,x in enumerate(firstData[0:N])])
+    Dis = np.array([np.array(x).astype(float) for i,x in enumerate(firstData[0:N])])
     #B=np.array(firstData[N:N+NS]).astype(np.float)
-    B = [list(np.array(x[0:N]).astype(np.float)) for i,x in enumerate(firstData[N:N+NS])]
-    pop = list(np.array(firstData[NS+N][0:N]).astype(np.float))
-    Cost = np.array(firstData[NS+N+1][0:M]).astype(np.float)
-    cap = np.array(firstData[NS+N+2][0:M]).astype(np.float)
-    Cec = np.array(firstData[NS+N+3][0:M]).astype(np.float)
-    p = np.array(firstData[NS+N+4][0:NS]).astype(np.float)
-    budget = (float(7)/7)*np.array(firstData[NS+N+5][0]).astype(np.float)
+    B = [list(np.array(x[0:N]).astype(float)) for i,x in enumerate(firstData[N:N+NS])]
+    pop = list(np.array(firstData[NS+N][0:N]).astype(float))
+    Cost = np.array(firstData[NS+N+1][0:M]).astype(float)
+    cap = np.array(firstData[NS+N+2][0:M]).astype(float)
+    Cec = np.array(firstData[NS+N+3][0:M]).astype(float)
+    p = np.array(firstData[NS+N+4][0:NS]).astype(float)
+    budget = (float(7)/7)*np.array(firstData[NS+N+5][0]).astype(float)
     M = len(cap)
     #Dis=np.reshape(Dis,(N,M,NS),'F')    
     
@@ -109,8 +109,8 @@ shelters = np.where(sum(y)>0)[0]
 shelters = sorted(shelters)
 NN = len(shelters) + 1
 
-instance_no = range(14, 15) # [7]
-QQ = "VT"
+instance_no = range(11, 16) # [7]
+QQ = "A"
 scenarios = np.random.randint(2000, size=len(instance_no))
 
 for sinx, s in zip(instance_no, scenarios):

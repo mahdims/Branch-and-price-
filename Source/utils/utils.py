@@ -298,8 +298,11 @@ def data_preparation(Case_name, NN, M, inst):
             ins_type = "T"
         elif inst <= 10:
             ins_type = "VT"
-        else:
+        elif inst <= 15:
             ins_type = "VTL"
+        else:
+            ins_type = "A"
+
         File_name = '%s_%d_%d_%d' % (Case_name, NN, M, inst)
         R_dic = read_object(f"{BASE_DIR}/Data/{Case_name}/TObj_R_Van{NN}")
 
@@ -309,14 +312,20 @@ def data_preparation(Case_name, NN, M, inst):
         elif inst <= 20:
             ins_type = "VT"
             inst -= 10
-        else:
+        elif inst <=30:
             ins_type = "VTL"
             inst -= 20
+        else:
+            ins_type = "A"
+            inst -= 30
         File_name = '%s_%s_%d' % (Case_name, ins_type, inst)
         R_dic = read_object(f"{BASE_DIR}/Data/{Case_name}/TObj_R_Kartal")
 
     Data = read_object(f'{BASE_DIR}/Data/{Case_name}/{File_name}')
-    R = R_dic[File_name]
+    if ins_type == "A":
+        R = 500
+    else:
+        R = R_dic[File_name]
     Data.R = R
 
     # If the distance are symmetric
@@ -332,6 +341,8 @@ def data_preparation(Case_name, NN, M, inst):
 
     # Data.Lambda = 0
     zeta1 = 2
+    if ins_type == "A":
+        zeta2 = 1.2
     if ins_type == "T":
         zeta2 = 0.5
     if ins_type == "VT":
@@ -343,6 +354,15 @@ def data_preparation(Case_name, NN, M, inst):
     Data.Maxtour = int(zeta1 * math.ceil(float(NN) / M) * np.percentile(list(Data.distances.values()), 50))
     Data.Q = int(zeta2 * Data.G.nodes[0]['supply'] / M)
     Data.Total_dis_epsilon = int(0.85 * M * Data.Maxtour)
+
+    # make sure there is no shelter with zero demand
+    for n in Data.G.nodes():
+        if Data.G.nodes[n]["demand"] == 0 and n != 0 and n != Data.NN+1:
+            Data.G.nodes[n]["demand"] = 10
+            Data.Gc.nodes[n]["demand"] = 10
+            Data.total_demand += 10
+
+
 
     return Data, File_name
 
