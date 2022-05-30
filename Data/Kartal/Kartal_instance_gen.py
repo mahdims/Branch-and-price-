@@ -109,7 +109,7 @@ shelters = np.where(sum(y)>0)[0]
 shelters = sorted(shelters)
 NN = len(shelters) + 1
 
-instance_no = range(11, 16) # [7]
+instance_no = range(12, 13) # [7]
 QQ = "A"
 scenarios = np.random.randint(2000, size=len(instance_no))
 
