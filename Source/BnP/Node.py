@@ -44,15 +44,15 @@ class Node:
         self.lower_bound = 0
         self.selected_R_D = []
         self.selected_route = []
-        self.feasible = self.feasibility_check()
         self.Dis = Node.Data.distances
         self.Col_runtime = 0
         self.cuts = cuts
         self.upper_bound, self.Int_route, self.Int_RDP = float("Inf"), [], []
-        # prepare the seq list
-        self.All_seq, self.connected_list, self.feasible = Seq.Create_seq(Node.Data, self.nodes2keep["N"])
+        self.feasible = self.feasibility_check()
 
         if self.feasible:
+            # prepare the seq list
+            self.All_seq, self.connected_list, self.feasible = Seq.Create_seq(Node.Data, self.nodes2keep["N"])
             # Add feasible solutions to the Col Dic by initial heuristic
             self.Run_initial_heuristic()
             if self.feasible:
@@ -267,6 +267,12 @@ class Node:
         for key, val in self.nodes2keep["N"].items():
             if len(val) >= 3:
                 return 0
+
+        for key, val in self.nodes2keep["N"].items():
+            if key in self.nodes2avoid["N"].keys():
+                for node in val:
+                    if node in self.nodes2avoid["N"][key]:
+                        return 0
 
         return 1
 
