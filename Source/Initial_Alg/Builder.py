@@ -90,6 +90,8 @@ def apply_the_merge(dis, routes, selected_move):
 def CW(Data, All_seq, dis):
 
     routes = []
+    if len(All_seq["D0"][0])>2:
+        stop =0
     for inx, item in All_seq.items():
         if inx != "D0" and inx != "D1":
             route = [All_seq["D0"][0]]

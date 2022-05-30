@@ -59,7 +59,7 @@ class Node:
                 # solve with column generation
                 self.solve()
                 # Find Upper_bound by solving integer Master
-                if Node.NodeCount % Node.Data.IMP_frequency == 0:
+                if Node.NodeCount % Node.Data.IMP_frequency == 0 or self.ID == 0:
                     intObj, IMP_selected_RD = Solve_IMP(Node.Data, Node.R, Node.UpperBound, self.Col_dic)
                     if intObj < self.upper_bound and len(IMP_selected_RD) != 0:
                         self.upper_bound = intObj
@@ -257,6 +257,19 @@ class Node:
 
             return Node(Node.NodeCount, self.ID, self.level+1, WhichNode, Col_dic, G,
                         cuts=self.cuts, nodes2avoid=nodes2avoid, nodes2keep=nodes2keep)
+
+    def rounding(self):
+        # @TODO this is not complete and not working!
+        selected_col = [(a, self.Y[a]) for a in self.Y.keys() if round(self.Y[a], 4) != 0]
+        selected = []
+        common_route ={}
+        for node in Node.Data.Gc.nodes:
+            common_route[node] = []
+            for a, val in selected_col:
+                if node in self.Col_dic[a[0]].RDP[a[1]]:
+                    common_route[node].append((a, val))
+
+
 
     def feasibility_check(self):
         # This function checks if the keep and avoid can make the a node infeasible

@@ -407,7 +407,6 @@ def ColumnGen(Data, All_seq, R, RMP, G_in, Col_dic, dis, nodes2keep, nodes2avoid
         RMP.reset()
         RMP.optimize()
         print(f"Time to solve Master problem with {RMP.NumVars} vars: {RMP.Runtime}")
-        # RMP.write("Master0.lp")
         if RMP.status != 2:
             # Report that the problem in current node is infeasible
             print("Infeasible Master Problem")
