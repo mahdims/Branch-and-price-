@@ -286,7 +286,7 @@ def roul_wheel(dic):
 
 def set_parameters(Data):
 
-    Data.IMP_frequency = 2
+    Data.IMP_frequency = 1
     Data.N_Added_GRASP = 10
     return Data
 

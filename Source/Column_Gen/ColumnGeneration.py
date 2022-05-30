@@ -305,7 +305,7 @@ def create_new_columns(Data, R, All_seq, nodes2keep, nodes2avoid, Duals, Col_dic
         GRASP_S_time = time.time()
         (Heuristic_works, heuristic_paths, heuristic_path_value) = PR.GRASP(Data, All_seq, nodes2keep,
                                                                             nodes2avoid, Duals, R)
-        print(f"GRASP EXE time: {time.time() - GRASP_S_time}")
+        # print(f"GRASP EXE time: {time.time() - GRASP_S_time}")
         # if the GRASP sol is too week just consider as non success
         if Heuristic_works:
             if all([path.value > -0.001 for path in heuristic_paths]):
@@ -340,7 +340,7 @@ def create_new_columns(Data, R, All_seq, nodes2keep, nodes2avoid, Duals, Col_dic
                 return "Sub_Inf", Col_dic, All_new_cols_IDs, cols_2_remove,  0
 
             flag = "GUROBI"
-            print(f"Sub Problem variables{Sub.NumVars} and runtime {Sub.Runtime}")
+            # print(f"Sub Problem variables{Sub.NumVars} and runtime {Sub.Runtime}")
             print("Sub Problem optimal value: %f" % Sub.objVal)
             MIP_solutions = Get_alternative_sols(Data, Sub)
             for New_Route in MIP_solutions:
@@ -354,7 +354,13 @@ def create_new_columns(Data, R, All_seq, nodes2keep, nodes2avoid, Duals, Col_dic
                     All_new_cols_IDs.append((Col_ID, RDP_ID))
                 else:
                     if Sub.objVal < -0.000002:
+                        print(f"The obj I calculate "
+                              f"{Calculate_the_subproblem_obj(Data, R, Duals,New_Route,New_Route.RDP[1][1:] ,[])}")
                         print(f"The sub problem found an exiting route similar to {Col_ID}!")
+                        print("New:")
+                        print(New_Route)
+                        print("Old:")
+                        print(Col_dic[Col_ID])
                     continue
             return flag, Col_dic, All_new_cols_IDs, cols_2_remove, Sub.objVal
 
@@ -406,7 +412,8 @@ def ColumnGen(Data, All_seq, R, RMP, G_in, Col_dic, dis, nodes2keep, nodes2avoid
         SolvedBy = ""
         RMP.reset()
         RMP.optimize()
-        print(f"Time to solve Master problem with {RMP.NumVars} vars: {RMP.Runtime}")
+        #print(f"Time to solve Master problem with {RMP.NumVars} vars: {RMP.Runtime}")
+
         if RMP.status != 2:
             # Report that the problem in current node is infeasible
             print("Infeasible Master Problem")
