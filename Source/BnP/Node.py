@@ -68,7 +68,6 @@ class Node:
                         print(f"At node {self.ID} Integer Master found an UB {intObj}")
             else:
                 pass
-                self.feasible = 0
                 # @TODO If the initial alg can't find a feasible solution then run the subproblem to do so, it is unlikly
                 # Sub = Sub_model.SubProblem(Node.Data, self.G, self.Dis, self.nodes2keep, self.nodes2avoid)
                 # Duals =[]

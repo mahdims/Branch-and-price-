@@ -90,15 +90,19 @@ def apply_the_merge(dis, routes, selected_move):
 def CW(Data, All_seq, dis):
 
     routes = []
-    if len(All_seq["D0"][0])>2:
-        stop =0
+
     for inx, item in All_seq.items():
         if inx != "D0" and inx != "D1":
             route = [All_seq["D0"][0]]
             route.append(item[0])
             route += All_seq["D1"]
             routes.append(RD.RouteDel(route, "Init"))
-
+        elif inx == "D0" and len(All_seq["D0"]) >= 2:
+            for i in range(1, len(All_seq["D0"])):
+                route = [All_seq["D0"][i]]
+                route += All_seq["D1"]
+                routes.append(RD.RouteDel(route, "Init"))
+                
     accepted_move = 1
     while accepted_move:
         candidate_list = []
