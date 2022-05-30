@@ -3,14 +3,19 @@ import sys
 from gurobipy import *
 from utils import Route_delivery as RD
 from utils import utils
-from utils import Opt_delivery as OptD
 # Class for solution of the initial heuristic (TabuRoute)
 
 
 class Solution:
     Data = None
+    Sol_count = 1
+    # As a reminder, alpha and beta are the penalty cost for being infeasible regarding the mac tour and vehicle cap
+    alpha = None
+    beta = None
 
-    def __init__(self, routes, alpha, beta):
+    def __init__(self, where, routes):
+        self.ID = Solution.Sol_count
+        self.creator = where
         self.routes = routes
         self.obj = 0
         self.total_time = sum([r.travel_time for r in routes])
@@ -19,18 +24,35 @@ class Solution:
         self.cap_F = 0
         self.feasible = 0
         self.feasible0 = 0
-        # Calculate the delivery quantity of all seq (by mathematical model) add to the RDP[1]
-        self.routes, self.q_obj = Optimal_quantity(Solution.Data, routes)
-        # Calculate the master objective value by for a total solution
+        self.keep_avoid_F = 0
+        self.routes, self.q_obj, self.total_del = Optimal_quantity(Solution.Data, routes)
+        # Calculate the master objective value by for a complete solution
         self.obj_calc(self.q_obj)
         # As a reminder, alpha and beta are the penalty cost for being infeasible regarding the mac tour and vehicle cap
-        self.score_cal(alpha, beta)
+        self.score_cal()
+
+        Solution.Sol_count += 1
+
+    def make_a_copy(self):
+        n_routes = []
+        for rot in self.routes:
+            n_routes.append(copy.deepcopy(rot))
+        new_sol = Solution(self.creator, n_routes)
+        new_sol.total_time = self.total_time
+        new_sol.q_obj = self.q_obj
+        new_sol.total_del = self.total_del
+        new_sol.obj_calc(new_sol.q_obj)
+        new_sol.score_cal()
+        return new_sol
+
+    def __repr__(self):
+        return f"S: {round(self.score,1)} Delivery: {self.total_del} Created: {self.creator}"
 
     def obj_calc(self, q_obj):
         self.obj = q_obj + (Solution.Data.Gamma / Solution.Data.R) * \
                    max(0, Solution.Data.Total_dis_epsilon - self.total_time)
 
-    def score_cal(self, alpha, beta):
+    def score_cal(self):
         violated_time = 0
         violated_cap = 0
         keep_avoid = 0
@@ -44,7 +66,7 @@ class Solution:
         self.keep_avoid_F = keep_avoid == 0
         self.feasible0 = self.time_F and self.cap_F
         self.feasible = self.time_F and self.cap_F and self.keep_avoid_F
-        self.score = self.obj + alpha * violated_time + beta * violated_cap + Solution.Data.Penalty * keep_avoid
+        self.score = self.obj + Solution.alpha * violated_time + Solution.beta * violated_cap + Solution.Data.Penalty * keep_avoid
 
     def Find_the_route(self, seqs):
         inx = set()
@@ -64,16 +86,12 @@ class Solution:
     def Replace(self, route_inx, New_route):
         self.routes[route_inx] = New_route
 
-    def Best_insertion(self, dis, alpha, beta, seqs, seqs_origin, des_route):
+    def Best_insertion(self, dis, seqs, seqs_origin, des_route):
         # This function calculates the cost of inserting the seq into the des_path.
         # Re calculate the delivery quantities and create a new solution.
         # using the greedy approach to place the seq in the route]
         flag = 1
-        All_seq_org = list(set(seqs_origin.values()))
-        routes = {id:r for id, r in enumerate(self.routes) if id != des_route and id not in All_seq_org}
-
-        for org in All_seq_org:
-            routes[org] = copy.deepcopy(self.routes[org])
+        routes = {id: copy.deepcopy(r) for id, r in enumerate(self.routes) if id != des_route}
 
         if not isinstance(seqs, list):
             seqs = [seqs]
@@ -102,7 +120,7 @@ class Solution:
             try:
                 new_route = RD.RouteDel(temp_list + [D1], "Init_new_route")
             except KeyError:
-                sys.exit(f"Line 100 Solution : \n {seqs}")
+                sys.exit(f"Line 110 Solution : \n {seqs}")
             flag = 1
 
         if flag:
@@ -117,11 +135,17 @@ class Solution:
 
             # The new delivery quantities are calculated in Solution __init__
             # The penalty for keep and avoid violation is added to the solution score
-            new_sol = Solution(clean_route, alpha, beta)
+            new_sol = Solution("Insertion",clean_route)
+            # TEST:
+            comul = 0
+            for i in range(len(new_sol.routes)):
+                comul += sum(new_sol.routes[i].RDP[1])
+            if round(comul, 0) > Solution.Data.G.nodes[0]["supply"]:
+                print(f"With total delivery {comul}")
 
             return new_sol
 
-        return self
+        return 0
 
 
 def remove_seq_from_route(route, seq):
@@ -139,7 +163,7 @@ def Greedy_insertion(dis, Maxtour, tour, node):
     best_cost = float("inf")
     Best_time_change = 0
     best_place = None
-    # we go for all positions and penalties the avoid edges.
+    # we go for all positions and penalties avoid edges.
     for pos in range(len(tour) - 1):
         fitness_change, time_change = tour.insertion_time(dis, pos, node)
         if fitness_change < best_cost and tour.travel_time + time_change <= Maxtour:
@@ -174,7 +198,7 @@ def Optimal_quantity(Data, routes):
             for r_inx in un_decided:
                 RDP = [0] * Data.NN
                 for i in routes[r_inx].nodes_in_path:
-                    RDP[i] = round(Gc.nodes[i]['demand'] * Beta, 10)
+                    RDP[i] = round(Gc.nodes[i]['demand'] * Beta, 5)
                 routes[r_inx].set_RDP(RDP)
             break
         else:
@@ -182,7 +206,7 @@ def Optimal_quantity(Data, routes):
                 beta_K = Q / r_demand[r_inx]
                 RDP = [0] * Data.NN
                 for i in routes[r_inx].nodes_in_path:
-                    RDP[i] = round(Gc.nodes[i]['demand'] * beta_K, 10)
+                    RDP[i] = round(Gc.nodes[i]['demand'] * beta_K, 5)
                 routes[r_inx].set_RDP(RDP)
                 un_decided.remove(r_inx)
                 C_remain -= Q
@@ -191,7 +215,7 @@ def Optimal_quantity(Data, routes):
 
     RDPS = {i: routes[i].RDP[1] for i in range(len(routes))}
     obj = utils.calculate_the_obj(Data, routes, RDPS)
-
+    # TEST:
     D_rate = {}
     D_correct = {}
     D_sum = []
@@ -203,5 +227,8 @@ def Optimal_quantity(Data, routes):
             print("The assigned deliveries in the initial algorithm has some problem")
         if not D_correct[i]:
             print("There is a problem , more than demand delivery")
+    if round(sum(D_sum), 0) > C:
+        print("The supply is violated")
 
-    return routes, obj
+    return routes, obj, sum(D_sum)
+

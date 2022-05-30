@@ -40,7 +40,7 @@ class RouteDel:
         return len(self.route)
 
     def __repr__(self):
-        return f"{self.route}"
+        return f"{self.route}\n{self.RDP[1]}"
 
     def __getitem__(self, inx):
         try:

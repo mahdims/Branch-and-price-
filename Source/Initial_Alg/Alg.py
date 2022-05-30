@@ -210,13 +210,11 @@ def TabuRoute(Data, All_seq, dis, Pars, keeps, avoids, CurrentSol):
     G = Pars[5]  # A scaling factor used to define an artificial objective function value
     H = Pars[6] # The frequency at which updates alpha and beta
     Max_No_Change = Pars[7] # Maximum number of iterations without any improvement
-    alpha = Pars[8]
-    beta = Pars[9]
 
-    CurrentSol.score_cal(alpha, beta)
-    BestSol = copy.deepcopy(CurrentSol)
-    Best_F_Sol = copy.deepcopy(CurrentSol)
-    Best_F0_sol = copy.deepcopy(CurrentSol)
+    CurrentSol.score_cal()
+    BestSol = CurrentSol.make_a_copy()
+    Best_F_Sol = CurrentSol.make_a_copy()
+    Best_F0_sol = CurrentSol.make_a_copy()
 
     tabu_list = {}
     No_Change_cont = 0
@@ -247,44 +245,45 @@ def TabuRoute(Data, All_seq, dis, Pars, keeps, avoids, CurrentSol):
 
             for r_id in possible_routes_ind:
                 # test inserting the node to a possible path
+                P_Sol = CurrentSol.Best_insertion(dis, v, origin_seq, r_id)
+                if isinstance(P_Sol, int):
+                    continue
 
-                P_Sol = CurrentSol.Best_insertion(dis, alpha, beta, v, origin_seq, r_id)
                 # before you do anything else pick  this solution
                 # feasible without considering avoiding and keeping edges
                 if P_Sol.feasible0 and P_Sol.obj < Best_F0_sol.obj:
-                    Best_F0_sol = copy.deepcopy(P_Sol)
+                    Best_F0_sol = P_Sol.make_a_copy()
 
                 # Check if the move is Tabu
                 if (v[0], r_id) in tabu_list.keys():
-
-                    if (1-P_Sol.feasible)*(P_Sol.score < BestSol.score) or P_Sol.feasible*(P_Sol.score < Best_F_Sol.score):
-                        Candidates[(v[0], r_id)] = P_Sol
+                    if (1-P_Sol.feasible)*(P_Sol.score < BestSol.score) or \
+                            P_Sol.feasible*(P_Sol.score < Best_F_Sol.score):
+                        Candidates[(v[0], r_id)] = P_Sol.make_a_copy()
                 else:
                     name = (v[0], r_id)
-                    Candidates[name] = P_Sol
+                    Candidates[name] = P_Sol.make_a_copy()
 
         # Step 3 Identification of best move
         if len(Candidates) != 0:
 
             inx, Best_New_Sol = min(Candidates.items(), key=lambda x:x[1].score)
-
             # Step 4 Next current solution
             if Best_New_Sol.score < CurrentSol.score: # or accept(Best_New_Sol, BestSol, temp):
-                CurrentSol = copy.deepcopy(Best_New_Sol) # change the next best sol
+                CurrentSol = Best_New_Sol.make_a_copy() # change the next best sol
                 No_Change_cont = 0
             else:
                 No_Change_cont += 1
 
             if CurrentSol.feasible and CurrentSol.score <= Best_F_Sol.score:
-                Best_F_Sol = CurrentSol
+                Best_F_Sol = CurrentSol.make_a_copy()
                 # update the best feasible solution
             if CurrentSol.score <= BestSol.score:
-                BestSol = CurrentSol
+                BestSol = CurrentSol.make_a_copy()
 
             # Add move to the tabu list
             tabu_list[inx] = random.randint(Teta_min, Teta_max)
         else:
-            print("Empty candidate !!")
+            No_Change_cont += 1
         # Update the tabu list
         tabu_moves = list(tabu_list.keys())
         for i in tabu_moves:
@@ -294,7 +293,7 @@ def TabuRoute(Data, All_seq, dis, Pars, keeps, avoids, CurrentSol):
         it += 1
         if No_Change_cont >= 8:
             # print("------- Restart ------")
-            CurrentSol = greedy_build(Data, All_seq,dis, alpha, beta,flag="random")
+            CurrentSol = greedy_build(Data, All_seq, dis, flag="random")
             No_Change_cont = 0
 
     # print('Iteration %d : Best F solution Obj = %s Total time = %s ' % (it, Best_F_Sol.obj, Best_F_Sol.total_time))
@@ -302,6 +301,14 @@ def TabuRoute(Data, All_seq, dis, Pars, keeps, avoids, CurrentSol):
         Best_F0_sol = 0
         # print(f"I found even better feasible solution with obj = {Best_F0_sol.obj}")
         pass
+
+    # TEST:
+    comul = 0
+    for i in range(len(Best_F_Sol.routes)):
+        comul += sum(Best_F_Sol.routes[i].RDP[1])
+    if round(comul, 0) > Solution.Data.G.nodes[0]["supply"]:
+        print(f"With total delivery {comul}")
+
     return Best_F_Sol, Best_F0_sol
 
 
@@ -326,12 +333,12 @@ def Initial_feasibleSol(Data, All_seq,  dis, keeps, avoids, number_of_sols):
     Solution.nodes2keep = keeps["E"]
     Seq.Sequence.dis = dis
 
-    alpha = 100
-    beta = 100
+    Solution.alpha = 100
+    Solution.beta = 100
 
     N_of_Node2Change = int(Data.NN / 5)
     N_of_near_node = int(Data.NN / 3)
-    pars = (N_of_Node2Change, N_of_near_node, None, 2, 5, 0.1, 2, 1000, alpha, beta)
+    pars = (N_of_Node2Change, N_of_near_node, None, 2, 5, 0.1, 2, 1000)
 
     initial_Sol_count = 0
     no_success = 0
@@ -339,7 +346,7 @@ def Initial_feasibleSol(Data, All_seq,  dis, keeps, avoids, number_of_sols):
     best_F0_sol = 0
     while initial_Sol_count < number_of_sols and no_success < 5:
 
-        new_sol = CW(Data, All_seq, dis, alpha, beta)
+        new_sol = CW(Data, All_seq, dis)
         #new_sol = greedy_build(Data, All_seq,dis,  alpha, beta)
         # new_sol = build_a_random_sol(Data, dis, alpha, beta)
         #if len(keeps["E"]) == 0 and len(avoids["E"]) ==0: # Only run for the root node
@@ -350,8 +357,9 @@ def Initial_feasibleSol(Data, All_seq,  dis, keeps, avoids, number_of_sols):
         # sys.exit(new_sol.routes)
         if new_sol.feasible:
             initial_Sol_count += 1
-            new_sols.append(new_sol)
+            new_sols.append(new_sol.make_a_copy())
             print(f"The TS optimal solution {new_sol.score}")
+
         else:
             print("Keep list")
             print(keeps)
@@ -362,8 +370,8 @@ def Initial_feasibleSol(Data, All_seq,  dis, keeps, avoids, number_of_sols):
         if good_sol != 0:
             #print(f"UB with TS with out edge branching {good_sol.score}")
             if best_F0_sol == 0:
-                best_F0_sol = copy.deepcopy(good_sol)
+                best_F0_sol = good_sol.make_a_copy()
             elif good_sol.obj < best_F0_sol.obj:
-                best_F0_sol = copy.deepcopy(good_sol)
+                best_F0_sol = good_sol.make_a_copy()
 
     return new_sols, best_F0_sol, no_success < 5

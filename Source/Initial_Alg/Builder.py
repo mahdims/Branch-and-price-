@@ -19,7 +19,7 @@ def assignment_cost(bins, bin_inx, item):
     return Gini(demands)
 
 
-def greedy_build(Data, All_seq, dis, alpha, beta, flag="sorted"):
+def greedy_build(Data, All_seq, dis, flag="sorted"):
     # All_seq = Data.All_seq
     unassigned = [item[0] for inx, item in All_seq.items() if inx != "D0" and inx != "D1"]
     if flag == "sorted":
@@ -29,7 +29,7 @@ def greedy_build(Data, All_seq, dis, alpha, beta, flag="sorted"):
     else:
         sys.exit("Wrong flag input for greedy_build function i Builder")
     bins = []
-    for i in range(Data.M):
+    for i in range(min(len(unassigned), Data.M)):
         bins.append([unassigned.pop(0)])
 
     for item in unassigned:
@@ -51,7 +51,7 @@ def greedy_build(Data, All_seq, dis, alpha, beta, flag="sorted"):
         new_RD.calc_time(dis)
         routes.append(new_RD)
 
-    new_sol = Solution(routes, alpha, beta)
+    new_sol = Solution("Greedy", routes)
 
     return new_sol
 
@@ -87,8 +87,8 @@ def apply_the_merge(dis, routes, selected_move):
     return routes
 
 
-def CW(Data, All_seq, dis, alpha, beta):
-    #All_seq = Data.All_seq
+def CW(Data, All_seq, dis):
+
     routes = []
     for inx, item in All_seq.items():
         if inx != "D0" and inx != "D1":
@@ -120,7 +120,7 @@ def CW(Data, All_seq, dis, alpha, beta):
             routes = apply_the_merge(dis, routes, selected_move)
             accepted_move = 1
 
-    new_sol = Solution(routes, alpha, beta)
+    new_sol = Solution("CW", routes)
     return new_sol
 
 

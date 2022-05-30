@@ -83,6 +83,8 @@ def branch_and_bound(Data, MaxTime, Filename):
     Node.best_objtime = 0
     Gap = 100
     Elapsed_time = 0
+    # Initial lower bound
+    Node.LowerBound = Data.total_demand - Data.G.nodes[0]["supply"]
 
     nodes2keep = {"N": {}, "E": []}
     nodes2avoid = {"N": {}, "E": []}
@@ -104,14 +106,14 @@ def branch_and_bound(Data, MaxTime, Filename):
         Node.reset()
         return str(round(UB,3)), str(round(LB,3)), str(round(Gap,3)), str(round(time2UB,3)), str(round(Elapsed_time,3)), str(Node.NodeCount)
 
-    while len(stack) and Node.Gap >= 0.009 and Elapsed_time < MaxTime:
+    while len(stack) and Node.Gap >= 0.009999999 and Elapsed_time < MaxTime:
 
         Elapsed_time = round(time.time() - start, 3)
 
         print_updates(start, Filename)
 
         # best first search strategy
-        print([(n.level, round(n.lower_bound, 3)) for n in heapq.nsmallest(4, stack)])
+        print([(n.level, n.ID, round(n.lower_bound, 3)) for n in heapq.nsmallest(4, stack)])
         node = heapq.heappop(stack)
 
         # Fathom by bound
@@ -131,7 +133,9 @@ def branch_and_bound(Data, MaxTime, Filename):
 
         for child in child_nodes:
             if not child.feasible:
-                print(f"Closed due to infeasiblity : Node {node.ID}")
+                print(f"Node {child.ID} pruned by infeasibility")
+            elif child.lower_bound >= Node.UpperBound:
+                print(f"Node {child.ID} pruned by bound")
             else:
                 heapq.heappush(stack, child)
                 Node.LB_UB_GAP_update(stack, child, start)

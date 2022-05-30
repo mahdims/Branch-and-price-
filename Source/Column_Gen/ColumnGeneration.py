@@ -1,6 +1,5 @@
 import itertools as it
 import time
-
 import networkx as nx
 import numpy as np
 import sys
@@ -59,7 +58,7 @@ def Get_the_Subtours(G, edges):
         Resulting_G.add_edge(*e)
 
     subtours = [c for c in sorted(nx.connected_components(Resulting_G), key=len, reverse=True)]
-    # Put the tour with depot nodes at first
+
     for s in subtours:
         if 0 in s and NN + 1 in s:
             subtours.remove(s)
@@ -88,7 +87,6 @@ def get_Duals(NN, RMP):
     #        EdgK[e] = AllDual[Per_end:Per_end+len(edges2keep["E"])][i]
 
     sub_row = []
-    # TODO I should check the correctness of the following Duals, is indexing correct?
     if RMP.getConstrByName("Subrow[0]"):
         # Per_end = Per_end + len(edges2keep["E"])
         sub_row = np.array(AllDual[Per_end:])
@@ -250,8 +248,7 @@ def remove_Var_from_RMP(RMP, Var_inxs):
             RMP.remove(variable)
 
     RMP.update()
-    return  RMP
-
+    return RMP
 
 
 def Get_the_Y_variables(RMP):
@@ -311,7 +308,7 @@ def create_new_columns(Data, R, All_seq, nodes2keep, nodes2avoid, Duals, Col_dic
         print(f"GRASP EXE time: {time.time() - GRASP_S_time}")
         # if the GRASP sol is too week just consider as non success
         if Heuristic_works:
-            if all([path.value > -0.01 for path in heuristic_paths]):
+            if all([path.value > -0.001 for path in heuristic_paths]):
                 Heuristic_works = 0
 
         if Heuristic_works:
@@ -356,6 +353,8 @@ def create_new_columns(Data, R, All_seq, nodes2keep, nodes2avoid, Duals, Col_dic
                     RDP_ID = Col_dic[Col_ID].add_RDP(New_Route.RDP[1])
                     All_new_cols_IDs.append((Col_ID, RDP_ID))
                 else:
+                    if Sub.objVal < -0.000002:
+                        print(f"The sub problem found an exiting route similar to {Col_ID}!")
                     continue
             return flag, Col_dic, All_new_cols_IDs, cols_2_remove, Sub.objVal
 
@@ -391,7 +390,7 @@ def optimality_cut_seperation(Data, Col_dic, Y):
 
 
 def ColumnGen(Data, All_seq, R, RMP, G_in, Col_dic, dis, nodes2keep, nodes2avoid, Sub, cuts):
-    Stoping_R_cost = -0.0002
+    Stoping_R_cost = -0.001
     global G, Gamma
     G = G_in
     NN = Data.NN
@@ -432,7 +431,7 @@ def ColumnGen(Data, All_seq, R, RMP, G_in, Col_dic, dis, nodes2keep, nodes2avoid
             create_new_columns(Data, R, All_seq, nodes2keep, nodes2avoid, Duals, Col_dic, Gc, dis, Sub, cuts)
         # TEST remove all the route-deliveries that we know we have better Q
         # RMP, Col_dic = Delete_the_unused_columns(RMP, Col_dic)
-        RMP = remove_Var_from_RMP(RMP, cols_2_remove)
+        # RMP = remove_Var_from_RMP(RMP, cols_2_remove)
 
         if SolvedBy == "Sub_Inf":  # Once the sub problem is infeasible (by Gurobi) stop column generation
             break

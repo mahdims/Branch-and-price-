@@ -1,7 +1,7 @@
 import sys
 import numpy as np
 import math
-import pickle as Pick
+import pickle5 as Pick
 import random as rand
 import itertools as it
 from os import path
@@ -286,7 +286,7 @@ def roul_wheel(dic):
 
 def set_parameters(Data):
 
-    Data.IMP_frequency = 4
+    Data.IMP_frequency = 2
     Data.N_Added_GRASP = 10
     return Data
 
@@ -312,7 +312,7 @@ def data_preparation(Case_name, NN, M, inst):
         elif inst <= 20:
             ins_type = "VT"
             inst -= 10
-        elif inst <=30:
+        elif inst <= 30:
             ins_type = "VTL"
             inst -= 20
         else:
@@ -361,8 +361,6 @@ def data_preparation(Case_name, NN, M, inst):
             Data.G.nodes[n]["demand"] = 10
             Data.Gc.nodes[n]["demand"] = 10
             Data.total_demand += 10
-
-
 
     return Data, File_name
 
