@@ -342,6 +342,7 @@ def create_new_columns(Data, R, All_seq, nodes2keep, nodes2avoid, Duals, Col_dic
             flag = "GUROBI"
             # print(f"Sub Problem variables{Sub.NumVars} and runtime {Sub.Runtime}")
             print("Sub Problem optimal value: %f" % Sub.objVal)
+            sub_obj = Sub.objVal
             MIP_solutions = Get_alternative_sols(Data, Sub)
             for New_Route in MIP_solutions:
                 indicator, Col_ID = New_Route.Is_unique(Col_dic)
@@ -361,8 +362,9 @@ def create_new_columns(Data, R, All_seq, nodes2keep, nodes2avoid, Duals, Col_dic
                         print(New_Route)
                         print("Old:")
                         print(Col_dic[Col_ID])
+                        sub_obj = 0
                     continue
-            return flag, Col_dic, All_new_cols_IDs, cols_2_remove, Sub.objVal
+            return flag, Col_dic, All_new_cols_IDs, cols_2_remove, sub_obj
 
 
 def optimality_cut_seperation(Data, Col_dic, Y):

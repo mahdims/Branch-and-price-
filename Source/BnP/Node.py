@@ -188,6 +188,9 @@ class Node:
         # find the one with the minimum
         
         while 1:
+            if len(Edge_Val) == 0:
+                # we can not branch this node any further
+                return []
             selected_edge = min(Edge_Val, key=Edge_Val.get)
             if selected_edge in self.nodes2avoid["E"] or selected_edge[::-1] in self.nodes2avoid["E"]:
                 del Edge_Val[selected_edge]
