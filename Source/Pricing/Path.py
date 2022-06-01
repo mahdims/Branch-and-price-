@@ -295,11 +295,6 @@ def Quantities_assignment_new(Data, Nodes_value, node_set):
             q_heuristic[i] = q_heuristic[s_node] * float(Data.G.nodes[i]["demand"] / Data.G.nodes[s_node]["demand"])
 
     for inx, value in q_heuristic.items():
-        Out_q[inx - 1] = value
-
-    # TEST
-    for i in node_set:
-        if Out_q[i - 1] == 0:
-            stop = 0
+        Out_q[inx - 1] = round(value, 6)
 
     return Out_q

@@ -102,7 +102,7 @@ def CW(Data, All_seq, dis):
                 route = [All_seq["D0"][i]]
                 route += All_seq["D1"]
                 routes.append(RD.RouteDel(route, "Init"))
-                
+
     accepted_move = 1
     while accepted_move:
         candidate_list = []

@@ -1,12 +1,8 @@
 import numpy as np
 import pickle as Pick
 import copy
-import sys
-import networkx as nx
-import itertools as it
 from utils import Seq
 from Pricing import Path
-# import Path
 
 
 def Make_it_compatible(edges2keep, edges2avoid):
