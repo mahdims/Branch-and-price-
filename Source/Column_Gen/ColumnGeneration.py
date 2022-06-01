@@ -218,7 +218,7 @@ def Update_Master_problem(Gc, R, cuts, RMP, Col_dic, Col_ID, RDP_ID):
             cons = RMP.getConstrByName("Subrow[%d]" % inx)
             col.addTerms(1, cons)
 
-    new_y = RMP.addVar(lb=0, ub=1, obj=-sum(New_Route.RDP[RDP_ID]) - Gamma * New_Route.travel_time / R,
+    new_y = RMP.addVar(lb=0, obj=-sum(New_Route.RDP[RDP_ID]) - Gamma * New_Route.travel_time / R,
                        name="y[%d,%d]" % (Col_ID, RDP_ID), column=col)
 
     RMP.update()
@@ -311,6 +311,7 @@ def create_new_columns(Data, R, All_seq, nodes2keep, nodes2avoid, Duals, Col_dic
             if all([path.value > -0.001 for path in heuristic_paths]):
                 Heuristic_works = 0
 
+        RDs_are_bad = 0
         if Heuristic_works:
             flag = "GRASP"
             for path in heuristic_paths:
@@ -326,11 +327,13 @@ def create_new_columns(Data, R, All_seq, nodes2keep, nodes2avoid, Duals, Col_dic
                     RDP_ID = Col_dic[Col_ID].add_RDP(New_Route.RDP[1])
                     All_new_cols_IDs.append((Col_ID, RDP_ID))
                 else:
-                    continue
+                    RDs_are_bad += 1
+
+            RDs_are_bad = int(RDs_are_bad/len(heuristic_paths))
 
             return flag, Col_dic, All_new_cols_IDs, cols_2_remove, -10
 
-        else:
+        if not Heuristic_works or RDs_are_bad:
             # Next Solve it with mathematical model
             Sub.reset()
             Sub = Set_sub_obj(Data, R, Gc, dis, Duals, Sub)
@@ -417,8 +420,9 @@ def ColumnGen(Data, All_seq, R, RMP, G_in, Col_dic, dis, nodes2keep, nodes2avoid
         #print(f"Time to solve Master problem with {RMP.NumVars} vars: {RMP.Runtime}")
 
         if RMP.status != 2:
+            RMP.write("Master_infeasible.lp")
             # Report that the problem in current node is infeasible
-            print("Infeasible Master Problem")
+            print(f"Master Problem exited with status {RMP.status}")
             sys.exit()
             return 0, RMP, Data.BigM, [], Col_dic
         RMP_objvals.append(RMP.objVal)

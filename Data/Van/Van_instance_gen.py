@@ -50,7 +50,7 @@ for NN in [60]: #[60,30,15]:
     # capacity of the vehicle
     Q = floor((totalDemand*Supply_per) / M[NN])
     NodeID = np.array(node_sheet.iloc[:, 1])
-    for inst in range(16, 21):
+    for inst in [17, 20]:
         D = 0.75*BDemand + np.random.rand(NN)*(WDemand-BDemand)
         G = nx.Graph()
         G.add_nodes_from([(i, {"demand": D[i-1]}) for i in range(1, NN)])
