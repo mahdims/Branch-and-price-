@@ -5,24 +5,51 @@ import sys
 
 OWD = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 
-path = OWD + "/Data/updated_results"
 
-if __name__ == "__main__":
-    if len(sys.argv) >= 2:
-        instance_type = sys.argv[1]
+def BnP_results_file(args):
+    path = OWD + "/Data/updated_results"
+    if len(args) >= 2:
+        instance_type = args[1]
         file_names = glob.glob(path + f"/{instance_type}*[0-9]")
-        if len(sys.argv) >= 3:
-            instance_N = sys.argv[2]
+        if len(args) >= 3:
+            instance_N = args[2]
             M = {60: 9, 30: 5, 15: 3, 13: 3}
             MM = M[int(instance_N)]
             file_names = glob.glob(path + f"/{instance_type}_{instance_N}_{MM}_*[0-9]")
-            if len(sys.argv) >= 4:
-                instance_index = sys.argv[3]
+            if len(args) >= 4:
+                instance_index = args[3]
                 file_names = glob.glob(path + f"/{instance_type}_{instance_N}_{MM}_{instance_index}")
         if len(file_names) == 0:
             print("Incorrect input!!")
     else:
         file_names = glob.glob(path+"/Kartal_*")
+
+    return file_names
+
+def Model_results_file(args):
+    path = OWD + "/Data"
+    if len(args) >= 2:
+        instance_type = args[1]
+        file_names = glob.glob(path + f"/{instance_type}/{instance_type}_*_*_NewModel")
+        if len(args) >= 3:
+            instance_N = args[2]
+            M = {60: 9, 30: 5, 15: 3, 13: 3}
+            MM = M[int(instance_N)]
+            file_names = glob.glob(path + f"/{instance_type}_{instance_N}_{MM}_*[0-9]")
+            if len(args) >= 4:
+                instance_index = args[3]
+                file_names = glob.glob(path + f"/{instance_type}_{instance_N}_{MM}_{instance_index}")
+        if len(file_names) == 0:
+            print("Incorrect input!!")
+    else:
+        file_names = glob.glob(path + "/Kartal/Kartal_*_*NewModel")
+    return file_names
+
+if __name__ == "__main__":
+    if sys.argv[1] == "BnP" or len(sys.argv) < 2:
+        file_names = BnP_results_file(sys.argv[1:])
+    elif sys.argv[1] == "Model":
+        file_names = Model_results_file(sys.argv[1:])
 
     for file_path in file_names:
         instance_name = file_path.split("/")[-1]

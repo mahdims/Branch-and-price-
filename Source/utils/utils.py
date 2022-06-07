@@ -37,7 +37,6 @@ def demand_proportional(Data, route_del):
     return 1
 
 
-
 def calculate_the_obj(Data, Routes, RDPs):
     Gc = Data.Gc
     # create the mapping to find the node quantities  :))
