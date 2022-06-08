@@ -82,7 +82,7 @@ def Get_the_Subtours(edges):
         return []
 
 
-def Model1_V2(Data, R):
+def Model1_V2(Data, R, SecondObjOnly=False):
     global Gc, G, NN, complement, M
     Gc = Data.Gc
     NN = Data.NN
@@ -119,17 +119,21 @@ def Model1_V2(Data, R):
     v = VF_MIP.addVars(G.nodes, lb=0, name="v")
     w = VF_MIP.addVars(G.nodes, lb=0, name="w")
     u = VF_MIP.addVars(G.nodes, lb=0, name="u")
-    tp = VF_MIP.addVars(Gc.nodes, Gc.nodes, lb=0, name="tp")
-    tn = VF_MIP.addVars(Gc.nodes, Gc.nodes, lb=0, name="tn")
     VF_MIP.update()
-    # VF_MIP.setObjective(quicksum(Dis[i,j]*x[i,j] for i,j in complement if j!=NN+1 ) )
-    VF_MIP.setObjective(quicksum(G.nodes[i]['demand'] - v[i] for i in Gc.nodes)
+
+    if SecondObjOnly:
+        VF_MIP.setObjective(quicksum(Dis[i,j]*x[i,j] for i,j in complement if j!=NN+1 ) )
+    else:
+        tp = VF_MIP.addVars(Gc.nodes, Gc.nodes, lb=0, name="tp")
+        tn = VF_MIP.addVars(Gc.nodes, Gc.nodes, lb=0, name="tn")
+
+        VF_MIP.setObjective(quicksum(G.nodes[i]['demand'] - v[i] for i in Gc.nodes)
                         + (Lambda/TotalD) * quicksum(tp[i, j] + tn[i, j] for i, j in tp.keys())
                         + Gamma/R * (Data.Total_dis_epsilon - quicksum(Dis[i, j]*x[i, j] for i, j in complement if j != NN+1)))
     
-    VF_MIP.addConstr(quicksum(Dis[i, j]*x[i, j] for i, j in complement if j != NN+1) <= Data.Total_dis_epsilon)
-    VF_MIP.addConstrs(tp[i, j]-tn[i, j] ==
-        v[i]*G.nodes[j]['demand']-v[j]*G.nodes[i]['demand'] for i in  Gc.nodes for j in Gc.nodes)
+        VF_MIP.addConstr(quicksum(Dis[i, j]*x[i, j] for i, j in complement if j != NN+1) <= Data.Total_dis_epsilon)
+        VF_MIP.addConstrs(tp[i, j]-tn[i, j] ==
+            v[i]*G.nodes[j]['demand']-v[j]*G.nodes[i]['demand'] for i in  Gc.nodes for j in Gc.nodes)
    
     VF_MIP.addConstrs(quicksum(x.select(i, '*')) == 1 for i in range(1, NN))
     VF_MIP.addConstrs(quicksum(x.select(i, '*')) == quicksum(x.select('*', i)) for i in Gc.nodes)
@@ -158,7 +162,7 @@ def Model1_V2(Data, R):
         Vv = VF_MIP.getAttr('x', v)
         # print(Vv)
         Xv = VF_MIP.getAttr('x', x)
-        Wv = VF_MIP.getAttr('x', w)
+        #Wv = VF_MIP.getAttr('x', w)
         # print(Wv)
         Tours = [b[0] for b in Xv.items() if b[1] > 0.5]
         # vehicles={}

@@ -22,9 +22,12 @@ class Node:
     best_RDP = []
     UpperBound = float("Inf")
     LowerBound = 0
+    Total_time = float("Inf")
+    abs_Gini = float("Inf")
     time2UB = - 10
     Data = None
     R = None
+    infeasible_master = False
 
     Node_dic = {0: []}
     Node_dic2 = {}
@@ -48,6 +51,8 @@ class Node:
         self.Col_runtime = 0
         self.cuts = cuts
         self.upper_bound, self.Int_route, self.Int_RDP = float("Inf"), [], []
+        self.Total_dis = float("Inf")
+        self.Gini = float("Inf")
         self.feasible = self.feasibility_check()
 
         if self.feasible:
@@ -58,20 +63,24 @@ class Node:
             if self.feasible:
                 # solve with column generation
                 self.solve()
-                # Find Upper_bound by solving integer Master
-                if Node.NodeCount % Node.Data.IMP_frequency == 0 or self.ID == 0:
-                    intObj, IMP_selected_RD = Solve_IMP(Node.Data, Node.R, Node.UpperBound, self.Col_dic)
-                    if intObj < self.upper_bound and len(IMP_selected_RD) != 0:
-                        self.upper_bound = intObj
-                        self.Int_route = [self.Col_dic[r] for r, d in IMP_selected_RD]
-                        self.Int_RDP = [self.Col_dic[r].RDP[d] for r, d in IMP_selected_RD]
-                        print(f"At node {self.ID} Integer Master found an UB {intObj}")
             else:
                 pass
                 # @TODO If the initial alg can't find a feasible solution then run the subproblem to do so, it is unlikly
                 # Sub = Sub_model.SubProblem(Node.Data, self.G, self.Dis, self.nodes2keep, self.nodes2avoid)
                 # Duals =[]
                 # Sub = CG.Set_sub_obj(Node.Data, Node.Data.R, None, Node.dis, Duals, Sub)
+                # Find Upper_bound by solving integer Master
+            if len(self.Col_dic) and (Node.NodeCount % Node.Data.IMP_frequency == 0 or self.ID == 0):
+                intObj, IMP_selected_RD, total_time, Gini = \
+                    Solve_IMP(Node.Data, Node.R, Node.UpperBound, self.Col_dic)
+                if intObj < self.upper_bound and len(IMP_selected_RD) != 0:
+                    self.upper_bound = intObj
+                    self.Int_route = [self.Col_dic[r] for r, d in IMP_selected_RD]
+                    self.Int_RDP = [self.Col_dic[r].RDP[d] for r, d in IMP_selected_RD]
+                    self.Total_dis = total_time
+                    self.Gini = Gini
+                    print(f"At node {self.ID} Integer Master found an UB {intObj}")
+
 
 
         # Extra information (Save the nodes and complete the tree fro drawings)
@@ -104,6 +113,8 @@ class Node:
                     self.upper_bound = sol.obj
                     self.Int_route = sol.routes
                     self.Int_RDP = [r.RDP[1] for r in sol.routes]
+                    self.Total_dis = sol.total_time
+                    self.Gini = sol.q_obj
                 new_routes += sol.routes
         else:
             print("Initial heuristic says Infeasible")
@@ -113,6 +124,8 @@ class Node:
                 self.upper_bound = F0_sol.obj
                 self.Int_route = F0_sol.routes
                 self.Int_RDP = [r.RDP[1] for r in F0_sol.routes]
+                self.Total_dis = F0_sol.total_time
+                self.Gini = F0_sol.q_obj
                 # new_routes += F0_sol.routes
 
         # Add the newly generated columns to the Col_dic
@@ -152,6 +165,8 @@ class Node:
         while 1:
             self.feasible, RMP, self.lower_bound, self.Y, self.Col_dic = CG.ColumnGen(Node.Data, self.All_seq, Node.R, RMP, self.G, self.Col_dic,
                                                                            self.Dis, self.nodes2keep["E"], self.nodes2avoid["E"], Sub, self.cuts)
+            if len(self.Y) == 0:
+                Node.infeasible_master = True
             # TEST
             # utils.check_branching(Node.Data, self.Col_dic, self.nodes2avoid["E"], self.nodes2keep["E"])
             #for key, col in self.Col_dic.items():
@@ -271,8 +286,6 @@ class Node:
                 if node in self.Col_dic[a[0]].RDP[a[1]]:
                     common_route[node].append((a, val))
 
-
-
     def feasibility_check(self):
         # This function checks if the keep and avoid can make the a node infeasible
         for edge in self.nodes2keep["E"]:
@@ -294,7 +307,7 @@ class Node:
     def integer(self):
         # This function checks if all master problem variables are integer or not
         if self.feasible:
-            indictor = all([self.Y[i] - int(self.Y[i]) < 0.00001 for i in self.Y.keys()])
+            indictor = all([abs(self.Y[i] - round(self.Y[i],0)) < 0.00001 for i in self.Y.keys()])
         else:
             indictor = False
 
@@ -302,6 +315,8 @@ class Node:
             self.upper_bound = self.lower_bound
             self.Int_route = [self.Col_dic[i] for (i, j), val in self.Y.items() if val > 0.9]
             self.Int_RDP = [self.Col_dic[i].RDP[j] for (i, j), val in self.Y.items() if val > 0.9]
+            self.Total_dis = sum(route.travel_time for route in self.Int_route)
+            self.Gini = utils.calculate_the_obj(Node.Data, self.Int_route, self.Int_RDP)
 
         return indictor
     
@@ -326,6 +341,8 @@ class Node:
             else:
                 Node.best_Route = node.Int_route
                 Node.best_RDP = node.Int_RDP
+            Node.Total_time = node.Total_dis
+            Node.abs_Gini = node.Gini
 
         Node.Gap = round((Node.UpperBound-Node.LowerBound)*100/Node.UpperBound, 3)
 
@@ -338,11 +355,13 @@ class Node:
         Node.time2UB = - 10
         Node.Data = None
         Node.R = None
-
         Node.Node_dic = {0: []}
         Node.Node_dic2 = {}
         Node.NodeCount = 0
         Node.Tree = nx.Graph()
+        Node.Total_time = float("Inf")
+        Node.abs_Gini = float("Inf")
+        Node.infeasible_master = False
 
     @classmethod
     def Draw_the_tree(cls):

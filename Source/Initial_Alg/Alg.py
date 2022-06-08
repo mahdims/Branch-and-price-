@@ -344,7 +344,7 @@ def Initial_feasibleSol(Data, All_seq,  dis, keeps, avoids, number_of_sols):
     no_success = 0
     new_sols = []
     best_F0_sol = 0
-    while initial_Sol_count < number_of_sols and no_success < 5:
+    while initial_Sol_count < number_of_sols and no_success < 10:
 
         new_sol = CW(Data, All_seq, dis)
         #new_sol = greedy_build(Data, All_seq,dis,  alpha, beta)
@@ -361,12 +361,12 @@ def Initial_feasibleSol(Data, All_seq,  dis, keeps, avoids, number_of_sols):
             print(f"The TS optimal solution {new_sol.score}")
 
         else:
-            print("Keep list")
-            print(keeps)
-            print("Avoids list")
-            print(avoids)
-            # input("Press any key to continue")
             no_success += 1
+            print(f"TS failed {no_success} times to find a feasible solution")
+            if len(new_sols) >=1:
+                break
+            # input("Press any key to continue")
+
         if good_sol != 0:
             #print(f"UB with TS with out edge branching {good_sol.score}")
             if best_F0_sol == 0:
@@ -374,4 +374,4 @@ def Initial_feasibleSol(Data, All_seq,  dis, keeps, avoids, number_of_sols):
             elif good_sol.obj < best_F0_sol.obj:
                 best_F0_sol = good_sol.make_a_copy()
 
-    return new_sols, best_F0_sol, no_success < 5
+    return new_sols, best_F0_sol, len(new_sols) != 0
