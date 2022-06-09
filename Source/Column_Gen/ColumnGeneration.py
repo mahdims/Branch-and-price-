@@ -401,7 +401,7 @@ def optimality_cut_seperation(Data, Col_dic, Y):
     print(f"Number of cuts could be add: {cut_counter}")
 
 
-def ColumnGen(Data, All_seq, R, RMP, G_in, Col_dic, dis, nodes2keep, nodes2avoid, Sub, cuts):
+def ColumnGen(Data, MaxTime, All_seq, R, RMP, G_in, Col_dic, dis, nodes2keep, nodes2avoid, Sub, cuts):
     Stoping_R_cost = -0.001
     global G, Gamma
     G = G_in
@@ -413,7 +413,7 @@ def ColumnGen(Data, All_seq, R, RMP, G_in, Col_dic, dis, nodes2keep, nodes2avoid
     RMP_objvals.append(133)
     tail_counter = 0
 
-    while Subobj < Stoping_R_cost and tail_counter < 100:
+    while Subobj < Stoping_R_cost and tail_counter < 100 and time.time() < MaxTime:
         # STEP1: Solve the Master problem
         SolvedBy = ""
         RMP.reset()

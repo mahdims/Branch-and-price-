@@ -78,7 +78,7 @@ def branch_and_bound(Data, MaxTime, Filename):
     start = time.time()
     Node.Data = Data
     Node.R = Data.R
-
+    Node.MaxTime = MaxTime + time.time()
     # Set initial Parameters
     Node.best_objtime = 0
     Gap = 100

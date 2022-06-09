@@ -25,7 +25,7 @@ class Node:
     time2UB = - 10
     Data = None
     R = None
-
+    MaxTime = 0
     Node_dic = {0: []}
     Node_dic2 = {}
     NodeCount = 0
@@ -150,7 +150,7 @@ class Node:
         # Start the Column Generation
         start = time()
         while 1:
-            self.feasible, RMP, self.lower_bound, self.Y, self.Col_dic = CG.ColumnGen(Node.Data, self.All_seq, Node.R, RMP, self.G, self.Col_dic,
+            self.feasible, RMP, self.lower_bound, self.Y, self.Col_dic = CG.ColumnGen(Node.Data, Node.MaxTime,self.All_seq, Node.R, RMP, self.G, self.Col_dic,
                                                                            self.Dis, self.nodes2keep["E"], self.nodes2avoid["E"], Sub, self.cuts)
             # TEST
             # utils.check_branching(Node.Data, self.Col_dic, self.nodes2avoid["E"], self.nodes2keep["E"])

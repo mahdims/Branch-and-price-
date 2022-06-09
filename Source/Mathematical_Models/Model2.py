@@ -100,7 +100,7 @@ def Model2(Data, R):
     #CF_MIP.Params.OutputFlag=0 
     #CF_MIP.write("IPmodel.lp")
     CF_MIP.params.TimeLimit = 7200
-    CF_MIP.params.MIPGap = 0.0001
+    CF_MIP.params.MIPGap = 0.00001
     CF_MIP.optimize()
     Objval=-1000000
     if CF_MIP.status != 3:

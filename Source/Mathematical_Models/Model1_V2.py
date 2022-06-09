@@ -148,7 +148,7 @@ def Model1_V2(Data, R):
     VF_MIP.update()
     # VF_MIP.params.LazyConstraints = 1
     VF_MIP.params.TimeLimit = 7200
-    VF_MIP.params.MIPGap = 0.0001
+    VF_MIP.params.MIPGap = 0.00001
     # VF_MIP.params.TimeLimit=500
     VF_MIP.optimize()
     

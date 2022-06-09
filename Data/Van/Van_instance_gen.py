@@ -36,8 +36,9 @@ Supply_per = 0.7
 La = 0.5
 Ga = 0.1
 
-for NN in [30]: #[60,30,15]:
-    M = {60: 9,
+for NN in [94]: #[60,30,15]:
+    M = {94: 12,
+        60: 9,
          30: 5,
          15: 3}   # number of vehicles
    
@@ -50,7 +51,7 @@ for NN in [30]: #[60,30,15]:
     # capacity of the vehicle
     Q = floor((totalDemand*Supply_per) / M[NN])
     NodeID = np.array(node_sheet.iloc[:, 1])
-    for inst in [20]: #range(16, 21):
+    for inst in range(1, 6):
         D = 0.75*BDemand + np.random.rand(NN)*(WDemand-BDemand)
         G = nx.Graph()
         G.add_nodes_from([(i, {"demand": D[i-1]}) for i in range(1, NN)])
