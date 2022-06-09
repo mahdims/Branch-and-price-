@@ -11,7 +11,7 @@ from gurobipy import *
 from Pricing import Pricing_GRASP as PR
 from Pricing import Path
 import copy
-
+import warnings
 
 def subtourelim(model, where):
     if where == GRB.callback.MIPSOL:
@@ -424,7 +424,7 @@ def ColumnGen(Data, MaxTime, All_seq, R, RMP, G_in, Col_dic, dis, nodes2keep, no
             RMP.write("Master_infeasible.lp")
             # Report that the problem in current node is infeasible
             print(f"Master Problem exited with status {RMP.status}")
-            sys.exit()
+            warnings.warn("The run will be terminated")
             return 0, RMP, Data.BigM, [], Col_dic
         RMP_objvals.append(RMP.objVal)
         print("Master Problem Optimal Value: %f" % RMP.objVal)

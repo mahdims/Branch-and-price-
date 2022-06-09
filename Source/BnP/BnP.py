@@ -103,7 +103,6 @@ def branch_and_bound(Data, MaxTime, Filename):
     if root.integer(): # check if we need to continue
         print_updates(start, Filename)
         UB, LB, time2UB, Gap = Node.UpperBound, Node.LowerBound, Node.time2UB, Node.Gap
-        Node.reset()
         return str(round(UB,3)), str(round(LB,3)), str(round(Gap,3)), str(round(time2UB,3)), str(round(Elapsed_time,3)), str(Node.NodeCount)
 
     while len(stack) and Node.Gap >= 0.009999999 and Elapsed_time < MaxTime:
@@ -131,6 +130,9 @@ def branch_and_bound(Data, MaxTime, Filename):
 
         child_nodes = node.Strong_Branching()
 
+        if Node.infeasible_master:
+            break
+
         for child in child_nodes:
             if not child.feasible:
                 print(f"Node {child.ID} pruned by infeasibility")
@@ -150,5 +152,5 @@ def branch_and_bound(Data, MaxTime, Filename):
 
     Elapsed_time = round(time.time() - start, 3)
     UB, LB, time2UB, Gap = Node.UpperBound, Node.LowerBound, Node.time2UB, Node.Gap
-    Node.reset()
+
     return str(round(UB,3)), str(round(LB,3)), str(round(Gap,3)), str(round(time2UB,3)), str(round(Elapsed_time,3)), str(Node.NodeCount)

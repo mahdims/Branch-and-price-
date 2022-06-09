@@ -44,9 +44,12 @@ def Solve_IMP(Data, R, CutOff, Col_dic):
         try:
             yv = IMP.getAttr('x', y)
             selected_RD = [e for e, value in yv.items() if value > 0.5]
-            return IMP.objVal, selected_RD
+            total_time = sum(Col_dic[r].travel_time for r,q in selected_RD)
+            Gini = IMP.objVal
+            Gini -= (Gamma / R) * (Data.Total_dis_epsilon - total_time)
+            return IMP.objVal, selected_RD, total_time, Gini
         except:
-            return float("Inf"), []
+            return float("Inf"), [], float("Inf"), float("Inf")
     else: 
-        return float("Inf"), []
+        return float("Inf"), [], float("Inf"), float("Inf")
     

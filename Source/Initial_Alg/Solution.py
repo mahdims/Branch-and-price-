@@ -56,17 +56,19 @@ class Solution:
         violated_time = 0
         violated_cap = 0
         keep_avoid = 0
+        total_time_vio = max(0, self.total_time - Solution.Data.Total_dis_epsilon)
         for route in self.routes:
             route.feasibility_check(Solution.Data)
             violated_time += route.time_violation
             violated_cap += route.cap_violation
             keep_avoid += (1-route.keep_avoid_F)
-        self.time_F = violated_time == 0
+        self.time_F = violated_time == 0 and total_time_vio == 0
         self.cap_F = violated_cap == 0
         self.keep_avoid_F = keep_avoid == 0
         self.feasible0 = self.time_F and self.cap_F
         self.feasible = self.time_F and self.cap_F and self.keep_avoid_F
-        self.score = self.obj + Solution.alpha * violated_time + Solution.beta * violated_cap + Solution.Data.Penalty * keep_avoid
+        self.score = self.obj + Solution.alpha * violated_time + Solution.beta * violated_cap + \
+                     Solution.Data.Penalty * keep_avoid + Solution.Data.Penalty * total_time_vio
 
     def Find_the_route(self, seqs):
         inx = set()
