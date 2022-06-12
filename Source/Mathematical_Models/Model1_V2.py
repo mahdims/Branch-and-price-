@@ -82,7 +82,7 @@ def Get_the_Subtours(edges):
         return []
 
 
-def Model1_V2(Data, R, SecondObjOnly=False):
+def Model1_V2(Data, R, SecondObjOnly=False, FirstObjOnly=False):
     global Gc, G, NN, complement, M
     Gc = Data.Gc
     NN = Data.NN
@@ -91,8 +91,13 @@ def Model1_V2(Data, R, SecondObjOnly=False):
     G = Data.G
     Gc = Data.Gc
     Lambda = Data.Lambda
-    Gamma = Data.Gamma
-    
+    if FirstObjOnly:
+        Gamma = 0
+    else:
+        Gamma = Data.Gamma
+
+    assert(not(FirstObjOnly and SecondObjOnly))
+
     complement = [i for i in permutations(Gc.nodes, 2)] + [(0, i) for i in Gc.nodes] +[(i,NN+1) for i in Gc.nodes]
     Dis = Data.distances
     maxdis = max(Dis.values())
@@ -128,11 +133,11 @@ def Model1_V2(Data, R, SecondObjOnly=False):
 
         VF_MIP.setObjective(quicksum(G.nodes[i]['demand'] - v[i] for i in Gc.nodes)
                         + (Lambda/TotalD) * quicksum(tp[i, j] + tn[i, j] for i, j in tp.keys())
-                        + Gamma/R * (Data.Total_dis_epsilon - quicksum(Dis[i, j]*x[i, j] for i, j in complement if j != NN+1)))
-    
-        VF_MIP.addConstr(quicksum(Dis[i, j]*x[i, j] for i, j in complement if j != NN+1) <= Data.Total_dis_epsilon)
+                        - Gamma/R * (Data.Total_dis_epsilon - quicksum(Dis[i, j]*x[i, j] for i, j in complement if j != NN+1)))
         VF_MIP.addConstrs(tp[i, j]-tn[i, j] ==
             v[i]*G.nodes[j]['demand']-v[j]*G.nodes[i]['demand'] for i in  Gc.nodes for j in Gc.nodes)
+        if not FirstObjOnly:
+            VF_MIP.addConstr(quicksum(Dis[i, j] * x[i, j] for i, j in complement if j != NN + 1) <= Data.Total_dis_epsilon)
    
     VF_MIP.addConstrs(quicksum(x.select(i, '*')) == 1 for i in range(1, NN))
     VF_MIP.addConstrs(quicksum(x.select(i, '*')) == quicksum(x.select('*', i)) for i in Gc.nodes)
@@ -154,7 +159,8 @@ def Model1_V2(Data, R, SecondObjOnly=False):
     VF_MIP.params.MIPGap = 0.00001
     # VF_MIP.params.TimeLimit=500
     VF_MIP.optimize()
-    
+    total_time =0
+    Gini =0
     Objval = "infeasible"
     if VF_MIP.status == 2:
         Objval = VF_MIP.objVal
@@ -169,6 +175,7 @@ def Model1_V2(Data, R, SecondObjOnly=False):
         
         print("Maximum tour length : %s" % Data.Maxtour)
         print("Vehicle capacity : %s" % Q)
+        total_time = 0
         for r in routes:
             RDP=[0]
             for i in r[1:-1]:
@@ -179,8 +186,9 @@ def Model1_V2(Data, R, SecondObjOnly=False):
             print(r)
             print(RDP)
             print("Total delivery in this tour: %s" %sum(RDP))
+            total_time += Time_Calc(Dis,NN,r)
             print("The Tour length is : %s \n" %round(Time_Calc(Dis,NN,r),1) )
     
-
-    print(VF_MIP.objVal,VF_MIP.ObjBound ,VF_MIP.Runtime,  VF_MIP.MIPGap)    
-    return (VF_MIP.objVal,VF_MIP.ObjBound ,VF_MIP.Runtime,  VF_MIP.MIPGap)
+        Gini = VF_MIP.objVal - Gamma/R * (Data.Total_dis_epsilon - total_time)
+    # print(VF_MIP.objVal,VF_MIP.ObjBound ,VF_MIP.Runtime,  VF_MIP.MIPGap)
+    return VF_MIP.objVal,VF_MIP.ObjBound ,VF_MIP.Runtime,  VF_MIP.MIPGap, Gini, total_time

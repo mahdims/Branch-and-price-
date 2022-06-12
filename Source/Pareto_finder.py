@@ -1,7 +1,6 @@
 import os
 from BnP import BnP, Node
-from utils import utils
-import matplotlib.pyplot as plt
+from utils import utils, plots
 
 
 def test_the_distance_symmetry(Dis):
@@ -19,20 +18,6 @@ def save_the_results(res):
     myfile.close()
 
 
-def pareto_plot(two_objs):
-    x =[]
-    y =[]
-    for key , val in two_objs.items():
-        x.append(val[0])
-        y.append(val[1])
-
-    #plt.legend(numpoints=1)
-    #plt.ylim(-1.2, 1.2)
-    plt.plot(x, y, 'o', color='black')
-    plt.show()
-
-
-
 if __name__ == "__main__":
     BaseDir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
     Case_name = "Van"
@@ -42,10 +27,10 @@ if __name__ == "__main__":
         Time = {15: 1000, 13: 1000, 30: 1800, 60: 3600}
         MaxTime = Time[NN]
         M = {60: 9, 30: 5, 15: 3, 13: 3}
-        for inst in [1]: #[8, 9, 10]: # range(11,12):
+        for inst in [16]: #[8, 9, 10]: # range(11,12):
             Data, File_name = utils.data_preparation(Case_name, NN, M[NN], inst)
             Data = utils.set_parameters(Data)
-            for epsilon in [22100]: # [30000, 24000, 23000, 22800, 22500, 22400, 22300, 22200, 22100]:
+            for epsilon in [22000]: # [30000, 24000, 23000, 22800, 22500, 22400, 22300, 22200, 22100, 21812]:
                 Data.Total_dis_epsilon = epsilon
 
                 print(f"We are solving {File_name}")
@@ -60,5 +45,5 @@ if __name__ == "__main__":
                 Node.Node.reset()
                 # utils.print_the_solution(Bsolution)
                 # utils.save_object(results, BaseDir + f"/Data/updated_results/{File_name}")
-            print(two_objs)
+        plots.pareto_plot(two_objs)
 

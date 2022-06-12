@@ -56,16 +56,15 @@ class Node:
             self.All_seq, self.connected_list, self.feasible = Seq.Create_seq(Node.Data, self.nodes2keep["N"])
             # Add feasible solutions to the Col Dic by initial heuristic
             self.Run_initial_heuristic()
-            if self.feasible:
-                # solve with column generation
-                self.solve()
-            else:
+            if not self.feasible and len(self.Col_dic) == 0:
                 pass
                 # @TODO If the initial alg can't find a feasible solution then run the subproblem to do so, it is unlikly
                 # Sub = Sub_model.SubProblem(Node.Data, self.G, self.Dis, self.nodes2keep, self.nodes2avoid)
                 # Duals =[]
                 # Sub = CG.Set_sub_obj(Node.Data, Node.Data.R, None, Node.dis, Duals, Sub)
-                # Find Upper_bound by solving integer Master
+            else:
+                self.solve()
+
             if len(self.Col_dic) and (Node.NodeCount % Node.Data.IMP_frequency == 0 or self.ID == 0):
                 intObj, IMP_selected_RD, total_time, Gini = \
                     Solve_IMP(Node.Data, Node.R, Node.UpperBound, self.Col_dic)
