@@ -18,7 +18,7 @@ if __name__ == "__main__":
         MaxTime = Time[NN]
         results = {}
         M = {60: 9, 30: 5, 15: 3, 13: 3}
-        for inst in range(1,31):
+        for inst in range(9,31):
             Data, File_name = utils.data_preparation(Case_name, NN, M[NN], inst)
             print(f"We are solving {File_name}")
             start = time()

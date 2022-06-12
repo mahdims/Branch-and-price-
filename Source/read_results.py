@@ -45,7 +45,7 @@ def Model_results_file(args):
             print("Incorrect input!!")
             print_how2use()
     else:
-        file_names = glob.glob(path + "/Kartal/Kartal_VTL_9_NewModel")
+        file_names = glob.glob(path + "/Kartal/Kartal_VTL_10_Model1_V2")
 
     clean_names = [name for name in file_names if "_NewModel" in name]
     return file_names
