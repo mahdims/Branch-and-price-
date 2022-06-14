@@ -16,15 +16,18 @@ from utils import utils
 
 if __name__ == "__main__":
     BASEDIR = os.path.dirname(BASEDIR)
-    Case_name = "Van"
-    #Case_name="Kartal"
-    NN = 13
-    for NN in [15]: # [60,30,15]:
-        Time = {15: 1000, 13: 1000, 30: 1800, 60: 3600}
+    #Case_name = "Van"
+
+    Case_name="Kartal"
+
+    for NN in [13]: # [60,30,15]:
+        Time = {15: 7200, 13: 7200, 30: 7200, 60: 7200}
         MaxTime = Time[NN]
         results = {}
         M = {60: 9, 30: 5, 15: 3, 13: 3}
-        for inst in [16]:
+
+        for inst in [2,5,7,8,9,11,14,17,18,19,20,23,24,26,29,30]: #range(16, 21):
+
             Data, File_name = utils.data_preparation(Case_name, NN, M[NN], inst)
             print(f"We are solving {File_name}")
 

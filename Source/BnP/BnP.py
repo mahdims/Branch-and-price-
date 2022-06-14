@@ -108,8 +108,9 @@ def branch_and_bound(Data, MaxTime, Filename):
     print("Start the BnP with root value %s" % Node.LowerBound)
     if root.integer(): # check if we need to continue
         print_updates(start, Filename)
-        UB, LB, time2UB, Gap = Node.UpperBound, Node.LowerBound, Node.time2UB, Node.Gap
-        return str(round(UB,3)), str(round(LB,3)), str(round(Gap,3)), str(round(time2UB,3)), str(round(Elapsed_time,3)), str(Node.NodeCount)
+        UB, LB, time2UB, Gap,NCount = Node.UpperBound, Node.LowerBound, Node.time2UB, Node.Gap, Node.NodeCount
+        Node.reset()
+        return str(round(UB,3)), str(round(LB,3)), str(round(Gap,3)), str(round(time2UB,3)), str(round(Elapsed_time,3)), str(NCount)
 
     while len(stack) and Node.Gap >= 0.009999999 and Elapsed_time < MaxTime:
 
@@ -157,6 +158,6 @@ def branch_and_bound(Data, MaxTime, Filename):
     print_updates(start, Filename)
 
     Elapsed_time = round(time.time() - start, 3)
-    UB, LB, time2UB, Gap = Node.UpperBound, Node.LowerBound, Node.time2UB, Node.Gap
-
-    return str(round(UB,3)), str(round(LB,3)), str(round(Gap,3)), str(round(time2UB,3)), str(round(Elapsed_time,3)), str(Node.NodeCount)
+    UB, LB, time2UB, Gap, NCount = Node.UpperBound, Node.LowerBound, Node.time2UB, Node.Gap, Node.NodeCount
+    Node.reset()
+    return str(round(UB,3)), str(round(LB,3)), str(round(Gap,3)), str(round(time2UB,3)), str(round(Elapsed_time,3)), str(NCount)

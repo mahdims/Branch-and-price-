@@ -33,7 +33,7 @@ if __name__ == "__main__":
         Time = {15: 7200, 13: 7200, 30: 7200, 60: 7200}
         MaxTime = Time[NN]
         M = {60: 9, 30: 5, 15: 3, 13: 3}
-        for inst in [28]: #[8, 9, 10]: # range(11,12):
+        for inst in [30]: #[22, 24, 29, 30]:# range(1,10):
             Data, File_name = utils.data_preparation(Case_name, NN, M[NN], inst)
             Data = utils.set_parameters(Data)
             # TEST
@@ -44,11 +44,9 @@ if __name__ == "__main__":
             # END TEST
 
             print(f"We are solving {File_name}")
-
             results = BnP.branch_and_bound(Data, MaxTime, File_name)
             print("\t".join(results))
             save_the_results([File_name] + list(results))
-
             # utils.print_the_solution(Bsolution)
             utils.save_object(results, BaseDir + f"/Data/updated_results/{File_name}")
             # save_object(results,'.\%s\%s_BnPresult' %(Case_name,File_name))
