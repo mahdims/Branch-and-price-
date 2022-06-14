@@ -133,7 +133,7 @@ def Model1_V2(Data, R, SecondObjOnly=False, FirstObjOnly=False):
 
         VF_MIP.setObjective(quicksum(G.nodes[i]['demand'] - v[i] for i in Gc.nodes)
                         + (Lambda/TotalD) * quicksum(tp[i, j] + tn[i, j] for i, j in tp.keys())
-                        - Gamma/R * (Data.Total_dis_epsilon - quicksum(Dis[i, j]*x[i, j] for i, j in complement if j != NN+1)))
+                        + Gamma/R * (Data.Total_dis_epsilon - quicksum(Dis[i, j]*x[i, j] for i, j in complement if j != NN+1)))
         VF_MIP.addConstrs(tp[i, j]-tn[i, j] ==
             v[i]*G.nodes[j]['demand']-v[j]*G.nodes[i]['demand'] for i in  Gc.nodes for j in Gc.nodes)
         if not FirstObjOnly:

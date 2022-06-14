@@ -410,7 +410,7 @@ def ColumnGen(Data, MaxTime, All_seq, R, RMP, G_in, Col_dic, dis, nodes2keep, no
     Gamma = Data.Gamma
     RMP_objvals = []
     Subobj = -1
-    RMP_objvals.append(133)
+    RMP_objvals.append(float("Inf"))
     tail_counter = 0
 
     while Subobj < Stoping_R_cost and tail_counter < 100 and time.time() < MaxTime:
