@@ -1,3 +1,9 @@
+"""
+@author: Mahdi Mostajabdaveh
+@Email: Mahdi.ms86@gmail.com
+@Github: github.com/mahdims
+"""
+
 import numpy as np
 import sys
 # from Other_TSP_solvers import TSP_model, TSP_concorde, LKH3

@@ -1,3 +1,9 @@
+"""
+@author: Mahdi Mostajabdaveh
+@Email: Mahdi.ms86@gmail.com
+@Github: github.com/mahdims
+"""
+
 import random
 import numpy as np
 import copy

@@ -1,3 +1,9 @@
+"""
+@author: Mahdi Mostajabdaveh
+@Email: Mahdi.ms86@gmail.com
+@Github: github.com/mahdims
+"""
+
 import os
 from BnP import BnP, Node
 from utils import utils, plots

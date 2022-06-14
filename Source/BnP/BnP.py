@@ -1,3 +1,9 @@
+"""
+@author: Mahdi Mostajabdaveh
+@Email: Mahdi.ms86@gmail.com
+@Github: github.com/mahdims
+"""
+
 import time
 import itertools as it
 import numpy as np

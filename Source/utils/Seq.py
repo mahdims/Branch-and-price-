@@ -1,3 +1,9 @@
+"""
+@author: Mahdi Mostajabdaveh
+@Email: Mahdi.ms86@gmail.com
+@Github: github.com/mahdims
+"""
+
 import sys
 import networkx as nx
 # This class group the nodes that should be together because of the edges to keep.

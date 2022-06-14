@@ -1,3 +1,9 @@
+"""
+@author: Mahdi Mostajabdaveh
+@Email: Mahdi.ms86@gmail.com
+@Github: github.com/mahdims
+"""
+
 import sys
 import numpy as np
 import math
@@ -43,8 +49,12 @@ def calculate_the_obj(Data, Routes, RDPs):
     Q_mapping = {}
     for i in Gc.nodes:
         for r_ID, route in enumerate(Routes):
-            if route.is_visit(i) != -1:
-                break
+            if isinstance(route[0], int):
+                if i in route:
+                    break
+            else:
+                if route.is_visit(i) != -1:
+                    break
         Q_mapping[i] = (r_ID, i)
 
     part1 = 0

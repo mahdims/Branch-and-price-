@@ -1,36 +1,46 @@
+"""
+@author: Mahdi Mostajabdaveh
+@Email: Mahdi.ms86@gmail.com
+@Github: github.com/mahdims
+"""
 
 import networkx as nx
-import itertools as it
-import matplotlib.pyplot as plt
-import random
+from os import path
+import sys
 from itertools import *
 from gurobipy import *
-###############################################
 
-def routes_finder(X,NN):
-    routes=[]
-    starters=[tub[1] for tub in X if tub[0]==0]
+BASEDIR = path.dirname(path.dirname(path.realpath(__file__)))
+sys.path.append(BASEDIR)
+import utils.utils as ut
+
+
+def routes_finder(X, NN):
+    routes = []
+    starters = [tub[1] for tub in X if tub[0] == 0]
     for st in starters:
-        X.remove((0,st))
-        current_node=st
-        route=[0,st]
-        while current_node!=NN+1:
+        X.remove((0, st))
+        current_node = st
+        route = [0, st]
+        while current_node != NN+1:
             tub = [tub for tub in X if current_node in tub][0]
-            X.remove( tub )
-            next_node=list(set(tub)-set([current_node]))
-            route +=next_node
+            X.remove(tub)
+            next_node = list(set(tub)-set([current_node]))
+            route += next_node
             current_node = next_node[0]
         routes.append(route)
     return routes
-    
-def Time_Calc(Dis,NN,R):
-    Travelcost=0
-    PreNode=0
-    for n in R[1:-1]: # travel time calculation
-        Travelcost +=  Dis[PreNode,n]
-        PreNode=n
+
+
+def Time_Calc(Dis, R):
+    Travelcost = 0
+    PreNode = 0
+    for n in R[1:-1]:  # travel time calculation
+        Travelcost += Dis[PreNode, n]
+        PreNode = n
     return Travelcost
-    
+
+
 def subtourelim(model, where):
   if where == GRB.callback.MIPSOL:
     selected = {}
@@ -55,7 +65,6 @@ def subtourelim(model, where):
                 expr += model._vars[tour[i], tour[j],k]
                 expr += model._vars[tour[j], tour[i],k]
       model.cbLazy(expr <= len(tour)-1)
-
 
 
 # Given a list of edges, finds the shortest subtour
@@ -157,38 +166,33 @@ def Model1_V2(Data, R, SecondObjOnly=False, FirstObjOnly=False):
     # VF_MIP.params.LazyConstraints = 1
     VF_MIP.params.TimeLimit = 7200
     VF_MIP.params.MIPGap = 0.00001
-    # VF_MIP.params.TimeLimit=500
     VF_MIP.optimize()
-    total_time =0
-    Gini =0
+    total_time = 0
+    Gini = 0
     Objval = "infeasible"
     if VF_MIP.status == 2:
-        Objval = VF_MIP.objVal
         Vv = VF_MIP.getAttr('x', v)
         # print(Vv)
         Xv = VF_MIP.getAttr('x', x)
-        #Wv = VF_MIP.getAttr('x', w)
-        # print(Wv)
         Tours = [b[0] for b in Xv.items() if b[1] > 0.5]
-        # vehicles={}
         routes = routes_finder(Tours, NN)
-        
         print("Maximum tour length : %s" % Data.Maxtour)
         print("Vehicle capacity : %s" % Q)
         total_time = 0
+        RDPs = []
         for r in routes:
-            RDP=[0]
+            RDPs.append([0]*NN)
             for i in r[1:-1]:
-                RDP.append(round(Vv[i],1))
-            RDP.append(0)
-        
-        
+                RDPs[-1][i] = Vv[i]
             print(r)
-            print(RDP)
-            print("Total delivery in this tour: %s" %sum(RDP))
-            total_time += Time_Calc(Dis,NN,r)
-            print("The Tour length is : %s \n" %round(Time_Calc(Dis,NN,r),1) )
-    
-        Gini = VF_MIP.objVal - Gamma/R * (Data.Total_dis_epsilon - total_time)
+            print(RDPs[-1])
+            print("Total delivery in this tour: %s" %sum(RDPs[-1]))
+            total_time += Time_Calc(Dis, r)
+            print("The Tour length is : %s \n" %round(Time_Calc(Dis, r), 1))
+
+        Gini_1 = ut.calculate_the_obj(Data, routes, RDPs)
+        Gini_2 = VF_MIP.objVal + Gamma/R * (Data.Total_dis_epsilon - total_time)
+        if not FirstObjOnly and not SecondObjOnly:
+            assert (round(Gini_1,2) == round(Gini_2,2))
     # print(VF_MIP.objVal,VF_MIP.ObjBound ,VF_MIP.Runtime,  VF_MIP.MIPGap)
-    return VF_MIP.objVal,VF_MIP.ObjBound ,VF_MIP.Runtime,  VF_MIP.MIPGap, Gini, total_time
+    return VF_MIP.objVal, VF_MIP.ObjBound, VF_MIP.Runtime,  VF_MIP.MIPGap, Gini_1, total_time

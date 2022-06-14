@@ -1,3 +1,9 @@
+"""
+@author: Mahdi Mostajabdaveh
+@Email: Mahdi.ms86@gmail.com
+@Github: github.com/mahdims
+"""
+
 from gurobipy import Model, GRB, quicksum
 
 def Solve_IMP(Data, R, CutOff, Col_dic):
