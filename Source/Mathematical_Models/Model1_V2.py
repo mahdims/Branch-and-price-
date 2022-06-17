@@ -168,7 +168,7 @@ def Model1_V2(Data, R, SecondObjOnly=False, FirstObjOnly=False):
     VF_MIP.params.MIPGap = 0.00001
     VF_MIP.optimize()
     total_time = 0
-    Gini = 0
+    Gini_1 = 0
     Objval = "infeasible"
     if VF_MIP.status == 2:
         Vv = VF_MIP.getAttr('x', v)
@@ -194,5 +194,6 @@ def Model1_V2(Data, R, SecondObjOnly=False, FirstObjOnly=False):
         Gini_2 = VF_MIP.objVal + Gamma/R * (Data.Total_dis_epsilon - total_time)
         if not FirstObjOnly and not SecondObjOnly:
             assert (round(Gini_1,2) == round(Gini_2,2))
+        GiniIndex = ut.calculate_Gini_index(Data, RDPs)
     # print(VF_MIP.objVal,VF_MIP.ObjBound ,VF_MIP.Runtime,  VF_MIP.MIPGap)
-    return VF_MIP.objVal, VF_MIP.ObjBound, VF_MIP.Runtime,  VF_MIP.MIPGap, Gini_1, total_time
+    return VF_MIP.objVal, VF_MIP.ObjBound, VF_MIP.Runtime,  VF_MIP.MIPGap, Gini_1, total_time, GiniIndex

@@ -110,11 +110,11 @@ def Model2(Data, R, SecondObjOnly=False, FirstObjOnly=False):
     CF_MIP.update()
     #CF_MIP.Params.OutputFlag=0 
     #CF_MIP.write("IPmodel.lp")
-    CF_MIP.params.TimeLimit = 7200
-    CF_MIP.params.MIPGap = 0.006
+    CF_MIP.params.TimeLimit = 600
+    CF_MIP.params.MIPGap = 0.0001
     CF_MIP.optimize()
-    Objval=-1000000
-    Gini, TT_Time = (0, 0)
+    Objval = -1000000
+    absGini, GiniIndex, TT_Time = (0, 0, 0)
     if CF_MIP.status != 3:
         Xv = CF_MIP.getAttr('x', x)
         Vv = CF_MIP.getAttr('x', v)
@@ -137,7 +137,8 @@ def Model2(Data, R, SecondObjOnly=False, FirstObjOnly=False):
             # print((np.array(demand) - np.array(RDP[-1])) / np.array(demand))
             print("Total delivery : %s" % sum(RDP[-1]))
             print("The Tour length is : %s \n" %round(Time_Calc(Dis, tour),1) )
-        Gini = ut.calculate_the_obj(Data, Tours, RDP)
+        absGini = ut.calculate_the_obj(Data, Tours, RDP)
+        GiniIndex = ut.calculate_Gini_index(Data, RDP)
         TT_Time = sum([Time_Calc(Dis, r) for r in Tours])
     print(CF_MIP.objVal, CF_MIP.ObjBound, CF_MIP.Runtime,  CF_MIP.MIPGap)
-    return CF_MIP.objVal, CF_MIP.ObjBound, CF_MIP.Runtime,  CF_MIP.MIPGap, Gini, TT_Time
+    return CF_MIP.objVal, CF_MIP.ObjBound, CF_MIP.Runtime,  CF_MIP.MIPGap, absGini, TT_Time, GiniIndex

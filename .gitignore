@@ -3,5 +3,6 @@
 *.json
 *.lp
 *.xlsx
+*.ods
 /.idea
 

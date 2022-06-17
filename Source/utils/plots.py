@@ -7,15 +7,18 @@
 import matplotlib.pyplot as plt
 
 
-def pareto_plot(instance_name, two_objs):
-    x = []
-    y = []
-    for key , val in two_objs.items():
-        x.append(val[0])
-        y.append(val[1])
+def pareto_plot(instance_name, two_objs, nondominant=[]):
 
-    #plt.legend(numpoints=1)
-    #plt.ylim(-1.2, 1.2)
-    plt.title(f"The Pareto front of instance {instance_name}")
-    plt.plot(x, y, 'o', color='black')
+    for key, val in two_objs.items():
+        if val in nondominant:
+            plt.plot(val[0], val[1], 'o', markersize=6, color='green')
+        else:
+            continue
+            plt.plot(val[0], val[1], 's', markersize=4, color='black')
+
+    # plt.legend(numpoints=1)
+    # plt.ylim(-1.2, 1.2)
+    plt.title(f"The Pareto front of {instance_name}")
+    plt.xlabel("IAAF")
+    plt.ylabel("Total route length")
     plt.show()

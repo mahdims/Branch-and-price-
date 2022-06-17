@@ -52,11 +52,12 @@ def SubProblem(Data, G, dis, edges2keep=None, edges2avoid=None):
     Sub.addConstrs(quicksum(x.select("*", i)) == quicksum(x.select(i, "*")) for i in Gc.nodes)
     Sub.addConstrs(quicksum(x.select(i, "*")) == a[i] for i in Gc.nodes)
     Sub.addConstrs(q[i] <= G.nodes[i]['demand']*a[i] for i in Gc.nodes)
-
-    Sub.addConstrs(q[i] * G.nodes[j]['demand'] <= q[j] * G.nodes[i]['demand'] + G.nodes[i]['demand'] * G.nodes[j]['demand'] * (1 - a[j]) for i in Gc.nodes for j in Gc.nodes if i != j)
-
-    Sub.addConstr(quicksum(G.nodes[i]['demand'] * a[i] for i in Gc.nodes) * (
-            G.nodes[0]['supply'] / Data.total_demand) <= Q + G.nodes[0]['supply'] * (1-z))
+    # demand proportional distribution
+    Sub.addConstrs(q[i] * G.nodes[j]['demand'] <= q[j] * G.nodes[i]['demand'] +
+                   G.nodes[i]['demand'] * G.nodes[j]['demand'] * (1 - a[j]) for i in Gc.nodes for j in Gc.nodes if i != j)
+    # Prop 2 and Alg 1 implications
+    Sub.addConstr(quicksum(G.nodes[i]['demand'] * a[i] for i in Gc.nodes) * (G.nodes[0]['supply'] / Data.total_demand)
+                  <= Q + G.nodes[0]['supply'] * (1-z))
 
     Sub.addConstr(quicksum(q) >= Q - Q*z)
 
