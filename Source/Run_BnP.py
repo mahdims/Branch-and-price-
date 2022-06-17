@@ -20,14 +20,14 @@ def save_the_results(res):
 
 if __name__ == "__main__":
     BaseDir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-    #Case_name = "Van"
-    Case_name = "Kartal"
+    Case_name = "Van"
+    #Case_name = "Kartal"
 
-    for NN in [13]:  # [60,30,15]:
+    for NN in [30]:  # [60,30,15]:
         Time = {15: 7200, 13: 7200, 30: 7200, 60: 7200}
         MaxTime = Time[NN]
         M = {60: 9, 30: 5, 15: 3, 13: 3}
-        for inst in [30]: #[22, 24, 29, 30]:# range(1,10):
+        for inst in [14, 15]: #[22, 24, 29, 30]:# range(1,10):
             Data, File_name = utils.data_preparation(Case_name, NN, M[NN], inst)
             Data = utils.set_parameters(Data)
             # TEST
