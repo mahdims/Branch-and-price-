@@ -1,8 +1,9 @@
-# -*- coding: utf-8 -*-
 """
 Created on Thu May 02 20:12:01 2019
 
-@author: User
+@author: Mahdi Mostajabdaveh
+@Email: Mahdi.ms86@gmail.com
+@Github: github.com/mahdims
 """
 import  numpy as np
 import itertools as it 

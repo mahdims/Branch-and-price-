@@ -1,7 +1,10 @@
-from gurobipy import *
-import numpy as np
-from utils import utils
+"""
+@author: Mahdi Mostajabdaveh
+@Email: Mahdi.ms86@gmail.com
+@Github: github.com/mahdims
+"""
 
+from gurobipy import *
 
 def MasterModel(Data, Col_dic, R):
     M = Data.M

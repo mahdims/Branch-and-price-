@@ -1,4 +1,9 @@
-import copy
+"""
+@author: Mahdi Mostajabdaveh
+@Email: Mahdi.ms86@gmail.com
+@Github: github.com/mahdims
+"""
+
 import itertools as it
 from utils import Route_delivery as RD
 from Initial_Alg.Solution import Solution

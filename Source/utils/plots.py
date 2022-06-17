@@ -1,29 +1,24 @@
+"""
+@author: Mahdi Mostajabdaveh
+@Email: Mahdi.ms86@gmail.com
+@Github: github.com/mahdims
+"""
 
 import matplotlib.pyplot as plt
 
 
+def pareto_plot(instance_name, two_objs, nondominant=[]):
 
-def pareto_plot(two_objs):
-    '''
-    two_objs = {30000: (142621.555020956, 29731.0),
-                24000: (142621.555020956, 23186.0),
-                23000: (142621.55501955346, 22902.0),
-                22900: (142818.78348237928, 22887.0),
-                22800: (142818.78428332423, 22595.0),
-                22500: (143031.59557384838, 22482.0),
-                22400: (143031.59557384838, 22198.0),
-                22300: (143031.59557606812, 22190.0),
-                22200: (143031.59557414433, 22190.0),
-                22100: (144630.94924861906, 21858.0),
-                21800: (150890.52810224783, 21669.0)}
-    '''
-    x = []
-    y = []
-    for key , val in two_objs.items():
-        x.append(val[0])
-        y.append(val[1])
+    for key, val in two_objs.items():
+        if val in nondominant:
+            plt.plot(val[0], val[1], 'o', markersize=6, color='green')
+        else:
+            continue
+            plt.plot(val[0], val[1], 's', markersize=4, color='black')
 
-    #plt.legend(numpoints=1)
-    #plt.ylim(-1.2, 1.2)
-    plt.plot(x, y, 'o', color='black')
+    # plt.legend(numpoints=1)
+    # plt.ylim(-1.2, 1.2)
+    plt.title(f"The Pareto front of {instance_name}")
+    plt.xlabel("IAAF")
+    plt.ylabel("Total route length")
     plt.show()

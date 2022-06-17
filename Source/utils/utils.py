@@ -1,3 +1,9 @@
+"""
+@author: Mahdi Mostajabdaveh
+@Email: Mahdi.ms86@gmail.com
+@Github: github.com/mahdims
+"""
+
 import sys
 import numpy as np
 import math
@@ -37,14 +43,36 @@ def demand_proportional(Data, route_del):
     return 1
 
 
+def calculate_Gini_index(Data, RDPs):
+    ListOfArrays = [np.array(Rdp) for Rdp in RDPs]
+    Comp_RDP = ListOfArrays[0]
+    for array in ListOfArrays[1:]:
+        Comp_RDP += array
+    demand = {n: Data.G.nodes[n]['demand'] for n in Data.G.nodes}
+    TotalD = sum(demand.values())
+    Total_unsatisfied = 0
+    Gini_I = 0
+    for n in Data.Gc.nodes:
+        for m in Data.Gc.nodes:
+            Gini_I += abs(demand[n]*Comp_RDP[m] - demand[m] * Comp_RDP[n])
+        Total_unsatisfied += demand[n] - Comp_RDP[n]
+    Gini_I = Gini_I/(2 * TotalD * Total_unsatisfied)
+
+    return Gini_I
+
+
 def calculate_the_obj(Data, Routes, RDPs):
     Gc = Data.Gc
     # create the mapping to find the node quantities  :))
     Q_mapping = {}
     for i in Gc.nodes:
         for r_ID, route in enumerate(Routes):
-            if route.is_visit(i) != -1:
-                break
+            if isinstance(route[0], int):
+                if i in route:
+                    break
+            else:
+                if route.is_visit(i) != -1:
+                    break
         Q_mapping[i] = (r_ID, i)
 
     part1 = 0
