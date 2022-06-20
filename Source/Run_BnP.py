@@ -34,7 +34,7 @@ if __name__ == "__main__":
         MaxTime = Time[NN]
         M = {60: 9, 30: 5, 15: 3, 13: 3}
         for inst in [14, 15]: #[22, 24, 29, 30]:# range(1,10):
-            Data, File_name = utils.data_preparation(Case_name, NN, M[NN], inst)
+            Data, File_name,_ = utils.data_preparation(Case_name, NN, M[NN], inst)
             Data = utils.set_parameters(Data)
             # TEST
             # Data.M = 5

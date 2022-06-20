@@ -389,7 +389,7 @@ def data_preparation(Case_name, NN, M, inst):
             Data.Gc.nodes[n]["demand"] = 10
             Data.total_demand += 10
 
-    return Data, File_name
+    return Data, File_name, ins_type
 
 
 def write_log(results, path_2_file, Routes=[], RDPs=[]):

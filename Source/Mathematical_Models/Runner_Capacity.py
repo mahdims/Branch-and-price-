@@ -47,7 +47,7 @@ def Epsilon_method(Data, UseModel2=False):
 
 def write_dic(Fname,two_obj):
 
-    with open(BASEDIR+f'/Data/Bi_Obj_results/{Fname}_2OBJ.txt', 'w') as file:
+    with open(BASEDIR+f'/Data/Bi_Obj_results/{Fname}_cap.txt', 'w') as file:
         file.write(json.dumps(two_obj))
 
 
@@ -105,28 +105,14 @@ def calc_UnSatisfied_AbsGini(Data, IAAF, TT_slack, Giniindex):
     return UD, AbsGini
 
 
-def print_sols_excel_style(Two_objs):
-    sorted_keys = sorted(Two_objs, reverse=True)
+def print_sols_excel_style(All_sols):
+    sorted_keys = sorted(All_sols, reverse=True)
 
-    Short_RL = min(non_dominants, key=lambda x: x[1])
-    print(f"\t\tIAAF \t Route Length \tTime \t Gini index\t  Total UD\t AbsGini \t RL increase%\t IAAF decrease")
+    print(f"\t\tIAAF \t Route Length \tTime \t Gini index\t  Total UD\t AbsGini")
     for ep in sorted_keys:
-        val = Two_objs[ep]
-        if len(val) >= 4:
-            f2_increase = -1
-            f1_decrease = -1
-            UnDemand, absGini = calc_UnSatisfied_AbsGini(Data, val[0], float(ep) - val[1], val[3])
-            if val in non_dominants:
-                f2_increase = (val[1] - Short_RL[1]) * 100 / Short_RL[1]
-                f1_decrease = (Short_RL[0] - val[0]) * 100 / Short_RL[0]
-                All_nondominat[ins_type].append((f1_decrease, f2_increase))
-                nonD_sols_Full_info.append(val + [UnDemand, absGini])
-            print(str(val in non_dominants) + "\t" + f"\t".join(
-                [str(round(a, 3)).ljust(10) for a in val]) +
-                  f"\t{round(UnDemand)}\t{round(absGini)}\t{round(f2_increase,4):<10}{round(f1_decrease,4):<10}")
-
-        else:
-            print(f"Instance with no Gini Index information {Fname}")
+        val = All_sols[ep]
+        UnDemand, absGini = calc_UnSatisfied_AbsGini(Data, val[0], float(ep) - val[1], val[3])
+        print(f"\t".join([str(round(a, 3)).ljust(10) for a in val]) + f"\t{round(UnDemand)}\t{round(absGini)}")
 
 
 def new_names(name, case_name, inst_type, inst):
@@ -143,7 +129,7 @@ def new_names(name, case_name, inst_type, inst):
 
 if __name__ == "__main__":
     BASEDIR = os.path.dirname(BASEDIR)
-    All_Two_objs = {}
+    All_sols = {}
     Case_name = "Van"
     #Case_name = "Kartal"
     All_nondominat = {"A": [], "T": [], "VT": [], "VTL": []}
@@ -153,28 +139,23 @@ if __name__ == "__main__":
         Time = {15: 7200, 13: 7200, 30: 7200, 60: 7200}
         MaxTime = Time[NN]
         M = {60: 9, 30: 5, 15: 3, 13: 3}
-        Instances = {("Van", 15): [16, 3, 5, 10, 11], ("Van", 30): [20, 1, 2, 10, 13], ("Van", 60): [2, 5, 6, 17],
+        Instances = {("Van", 15): [16, 3, 5, 10, 11], ("Van", 30): [20, 1, 2, 10, 13], ("Van", 60): [5, 17],
                      ("Kartal", 13): [3, 6, 17, 25, 32]}
         Instances_4_plotting = {("Van", 15): [11], ("Van", 30): [10], ("Van", 60): [2],
                      ("Kartal", 13): [25]}
 
-        Instances_4_plotting2 = {("Van", 30): [13]}
-        for (Case_name,NN), vals in Instances_4_plotting2.items():
+        Instances_4_plotting2 = {("Van", 30): [20]}
+        for (Case_name,NN), vals in Instances.items():
             for inst in vals:
                 Data, File_name, ins_type = utils.data_preparation(Case_name, NN, M[NN], inst)
-                # print(f"We are solving {File_name}")
-                # All_Two_objs[File_name] = Epsilon_method(Data, UseModel2=True)
-                # write_dic(File_name, All_Two_objs[File_name])
-                All_Two_objs = read_dic(File_name, All=False)
-                for Fname in All_Two_objs.keys():
-                    non_dominants = non_dominant_sols(All_Two_objs[Fname])
-                    TTime = sum([val[2] for val in All_Two_objs[Fname].values()])
-                    print(f"Name \t \t #Solved \t #Nondominant \t Time")
-                    print(f"{Fname:<15} {len(All_Two_objs[Fname]):<10} {len(non_dominants):<10} {round(TTime,3):<10}")
-                    print_sols_excel_style(All_Two_objs[Fname])
-                    plots.pareto_plot( new_names(Fname, Case_name, ins_type, inst), All_Two_objs[Fname], nondominant=non_dominants)
-
-    #for Ins_Type, val in All_nondominat.items():
-    #    plots.TwoObj_percentage(val, Ins_Type)
-    # Comparision between gini and IAAF
-    plots.GiniVsIAAF(nonD_sols_Full_info)
+                print(f"We are solving {File_name}")
+                All_sols[File_name] = {}
+                for zeta2 in [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3,1.4,1.5]:
+                    Data.Q = int(zeta2 * Data.G.nodes[0]['supply'] / Data.M)
+                    best_obj, LB, Runtime, GAP, AbsGini, TT_time, GiniI = Model2(Data, Data.R)
+                    All_sols[File_name][zeta2] = [best_obj, LB, Runtime, GAP, AbsGini, TT_time, GiniI]
+                write_dic(File_name, All_sols[File_name])
+                # All_sols = read_dic(File_name, All=False)
+                for Fname in All_sols.keys():
+                    print_sols_excel_style(All_sols[Fname])
+                    plots.capacity_plot(new_names(Fname, Case_name, ins_type, inst), All_sols[Fname])

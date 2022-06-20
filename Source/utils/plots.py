@@ -3,6 +3,7 @@
 @Email: Mahdi.ms86@gmail.com
 @Github: github.com/mahdims
 """
+import math
 
 import matplotlib.pyplot as plt
 
@@ -22,3 +23,69 @@ def pareto_plot(instance_name, two_objs, nondominant=[]):
     plt.xlabel("IAAF")
     plt.ylabel("Total route length")
     plt.show()
+
+
+def TwoObj_percentage(All_nondominat, Ins_Type="All"):
+    x = [a[0] for a in All_nondominat]
+    y = [a[1] for a in All_nondominat]
+    fig, ax = plt.subplots(ncols=1)
+    plt.plot(x, y, 'o', markersize=6, color='black')
+    ax.plot(ax.get_xlim(), ax.get_xlim())
+    plt.title(f"Changes in IAAF and and total route length for instances of type {Ins_Type}")
+    plt.xlabel("Decrease in IAAF(%)")
+    plt.ylabel("Increase in total route length(%)")
+    plt.show()
+
+
+def GiniVsIAAF(Full_info_Sols):
+    #for ins_type in Full_info_Sols:
+    All_sorted = sorted(Full_info_Sols, key= lambda x: x[0])
+    x = [a[0] for a in All_sorted]
+    y1 = [a[3] for a in All_sorted]
+    y2 = [a[4] for a in All_sorted]
+    y3 = [a[5] for a in All_sorted]
+    fig, ax = plt.subplots(ncols=3)
+    ax[0].plot(x, y1, 'o', markersize=6, color='black')
+    ax[1].plot(x, y2, '*', markersize=6, color='blue')
+    ax[2].plot(x, y3, 'o')
+
+    ax[0].set_title(f"Gini index and IAAF")
+    ax[1].set_title("Unsatisfied demand and IAAF")
+    ax[0].set_ylabel("Gini Index")
+    ax[1].set_ylabel("Unsatisfied demand")
+    ax[0].set_xlabel("IAAF")
+    ax[1].set_xlabel("IAAF")
+    plt.show()
+
+    x = [a[4] for a in All_sorted]
+    y1 = [a[0] for a in All_sorted]
+    y2 = [a[3] for a in All_sorted]
+
+    fig, ax = plt.subplots(ncols=2)
+    ax[1].plot(x, y1, 'o', markersize=6, color='black')
+    ax[0].plot(x, y2, '*', markersize=6, color='blue')
+
+    ax[0].set_title(f"Unsatisfied demand and Gini index")
+    ax[1].set_title("Unsatisfied demand and IAAF")
+    ax[1].set_ylabel("IAAF")
+    ax[0].set_ylabel("Gini index")
+    ax[1].set_xlabel("Unsatisfied demand")
+    ax[0].set_xlabel("Unsatisfied demand")
+
+
+    plt.show()
+
+
+def capacity_plot(name, All_sols):
+    x = [a for a in All_sols.keys()]
+    y1 = [a[0] for a in All_sols.values()]
+    y2 = [a[6] for a in All_sols.values()]
+    fig, ax = plt.subplots(ncols=2)
+    ax[0].plot(x, y1, 'o', markersize=6, color='black')
+    ax[1].plot(x, y2, 'o', markersize=6, color='black')
+    plt.title(f"Changes in IAAF according to Vehicle Capacity of instance {name}")
+    plt.xlabel("Vehicle capacity coefficient")
+    plt.ylabel("IAAF)")
+    plt.show()
+
+
