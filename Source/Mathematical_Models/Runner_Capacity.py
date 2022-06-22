@@ -46,7 +46,11 @@ def Epsilon_method(Data, UseModel2=False):
 
 
 def write_dic(Fname,two_obj):
-
+    try:
+        old_dic = read_dic(Fname)[Fname]
+        two_obj.update(old_dic)
+    except:
+        pass
     with open(BASEDIR+f'/Data/Bi_Obj_results/{Fname}_cap.txt', 'w') as file:
         file.write(json.dumps(two_obj))
 
@@ -80,13 +84,13 @@ def non_dominant_sols(TwoObj):
 
 def read_dic(Fname, All=False):
     if All:
-        files = glob.glob(BASEDIR + f'/Data/Bi_Obj_results/*_2OBJ.txt')
+        files = glob.glob(BASEDIR + f'/Data/Bi_Obj_results/*_cap.txt')
     else:
-        files = [BASEDIR+f'/Data/Bi_Obj_results/{Fname}_2OBJ.txt']
+        files = [BASEDIR+f'/Data/Bi_Obj_results/{Fname}_cap.txt']
 
     two_objs = {}
     for myfile in files:
-        Name = myfile.split("/")[-1].split(".")[0].replace("_2OBJ", "")
+        Name = myfile.split("/")[-1].split(".")[0].replace("_cap", "")
         with open(myfile, 'r') as file:
             two_objs[Name] =json.load(file)
         #removed_key, _ = list(two_objs[Name].items())[0] # Remove the first element
@@ -106,7 +110,7 @@ def calc_UnSatisfied_AbsGini(Data, IAAF, TT_slack, Giniindex):
 
 
 def print_sols_excel_style(All_sols):
-    sorted_keys = sorted(All_sols, reverse=True)
+    sorted_keys = sorted(All_sols, key=lambda x: float(x), reverse=True)
 
     print(f"\t\tIAAF \t Route Length \tTime \t Gini index\t  Total UD\t AbsGini")
     for ep in sorted_keys:
@@ -145,17 +149,21 @@ if __name__ == "__main__":
                      ("Kartal", 13): [25]}
 
         Instances_4_plotting2 = {("Van", 30): [20]}
-        for (Case_name,NN), vals in Instances.items():
+        for (Case_name, NN), vals in Instances.items():
+            if Case_name == "Kartal":
+                continue
             for inst in vals:
                 Data, File_name, ins_type = utils.data_preparation(Case_name, NN, M[NN], inst)
                 print(f"We are solving {File_name}")
+
                 All_sols[File_name] = {}
-                for zeta2 in [0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1, 1.1, 1.2, 1.3,1.4,1.5]:
+                for zeta2 in [1.6, 1.7, 1.8, 1.9, 2, 2.1, 2.2, 2.3, 2.4, 2.5]:
                     Data.Q = int(zeta2 * Data.G.nodes[0]['supply'] / Data.M)
                     best_obj, LB, Runtime, GAP, AbsGini, TT_time, GiniI = Model2(Data, Data.R)
                     All_sols[File_name][zeta2] = [best_obj, LB, Runtime, GAP, AbsGini, TT_time, GiniI]
                 write_dic(File_name, All_sols[File_name])
-                # All_sols = read_dic(File_name, All=False)
+
+                #All_sols = read_dic(File_name, All=False)
                 for Fname in All_sols.keys():
                     print_sols_excel_style(All_sols[Fname])
-                    plots.capacity_plot(new_names(Fname, Case_name, ins_type, inst), All_sols[Fname])
+                    #plots.capacity_plot(new_names(Fname, Case_name, ins_type, inst), All_sols[Fname])
