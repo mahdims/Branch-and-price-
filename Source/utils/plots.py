@@ -6,7 +6,7 @@
 import math
 
 import matplotlib.pyplot as plt
-
+import numpy as np
 
 def pareto_plot(instance_name, two_objs, nondominant=[]):
 
@@ -77,15 +77,28 @@ def GiniVsIAAF(Full_info_Sols):
 
 
 def capacity_plot(name, All_sols):
-    x = [a for a in All_sols.keys()]
-    y1 = [a[0] for a in All_sols.values()]
-    y2 = [a[6] for a in All_sols.values()]
+    sorted_sols = sorted(All_sols.items(), key= lambda x: float(x[0]))
+    x = [float(a[0]) for a in sorted_sols]
+    y1 = [float(a[1][0]) for a in sorted_sols]
+    y2 = [float(a[1][6]) for a in sorted_sols]
     fig, ax = plt.subplots(ncols=2)
     ax[0].plot(x, y1, 'o', markersize=6, color='black')
     ax[1].plot(x, y2, 'o', markersize=6, color='black')
-    plt.title(f"Changes in IAAF according to Vehicle Capacity of instance {name}")
-    plt.xlabel("Vehicle capacity coefficient")
-    plt.ylabel("IAAF)")
+    fig.suptitle(f"Vehicle capacity analysis for instance {name}")
+    ax[0].set_xlabel("Vehicle capacity coefficient (\u03B6\u00b3)", labelpad=7)
+    ax[1].set_xlabel("Vehicle capacity coefficient (\u03B6\u00b3)", labelpad=7)
+    ax[0].set_ylabel("IAAF")
+    ax[1].set_ylabel("Gini index")
+
+    Ticks = []
+    for a in np.arange(min(x), max(x), 0.2):
+        Ticks.append(round(a, 1))
+        Ticks.append(" ")
+    #Ticks.append(max(x))
+
+    ax[0].set_xticks(x, labels=Ticks)
+    ax[1].set_xticks(x, labels=Ticks)
+    # plt.xticks(ticks=Ticks)
     plt.show()
 
 

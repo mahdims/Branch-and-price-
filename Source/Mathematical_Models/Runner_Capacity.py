@@ -148,22 +148,21 @@ if __name__ == "__main__":
         Instances_4_plotting = {("Van", 15): [11], ("Van", 30): [10], ("Van", 60): [2],
                      ("Kartal", 13): [25]}
 
-        Instances_4_plotting2 = {("Van", 30): [20]}
-        for (Case_name, NN), vals in Instances.items():
-            if Case_name == "Kartal":
-                continue
+        Instances_4_plottingCap = {("Van", 15): [11], ("Kartal", 13): [17], ("Van", 30): [1]}
+        for (Case_name, NN), vals in Instances_4_plottingCap.items():
+
             for inst in vals:
                 Data, File_name, ins_type = utils.data_preparation(Case_name, NN, M[NN], inst)
                 print(f"We are solving {File_name}")
-
+                '''
                 All_sols[File_name] = {}
                 for zeta2 in [1.6, 1.7, 1.8, 1.9, 2, 2.1, 2.2, 2.3, 2.4, 2.5]:
                     Data.Q = int(zeta2 * Data.G.nodes[0]['supply'] / Data.M)
                     best_obj, LB, Runtime, GAP, AbsGini, TT_time, GiniI = Model2(Data, Data.R)
                     All_sols[File_name][zeta2] = [best_obj, LB, Runtime, GAP, AbsGini, TT_time, GiniI]
                 write_dic(File_name, All_sols[File_name])
-
-                #All_sols = read_dic(File_name, All=False)
+                '''
+                All_sols = read_dic(File_name, All=False)
                 for Fname in All_sols.keys():
                     print_sols_excel_style(All_sols[Fname])
-                    #plots.capacity_plot(new_names(Fname, Case_name, ins_type, inst), All_sols[Fname])
+                    plots.capacity_plot(new_names(Fname, Case_name, ins_type, inst), All_sols[Fname])
