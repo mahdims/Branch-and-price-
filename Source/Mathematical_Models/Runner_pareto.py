@@ -119,6 +119,8 @@ def print_sols_excel_style(Two_objs):
             if val in non_dominants:
                 f2_increase = (val[1] - Short_RL[1]) * 100 / Short_RL[1]
                 f1_decrease = (Short_RL[0] - val[0]) * 100 / Short_RL[0]
+                if f2_increase > 50:
+                    continue
                 All_nondominat[ins_type].append((f1_decrease, f2_increase))
                 nonD_sols_Full_info.append(val + [UnDemand, absGini])
             print(str(val in non_dominants) + "\t" + f"\t".join(
@@ -153,13 +155,13 @@ if __name__ == "__main__":
         Time = {15: 7200, 13: 7200, 30: 7200, 60: 7200}
         MaxTime = Time[NN]
         M = {60: 9, 30: 5, 15: 3, 13: 3}
-        Instances = {("Van", 15): [16, 3, 5, 10, 11], ("Van", 30): [20, 1, 2, 10, 13], ("Van", 60): [2, 5, 6, 17],
+        Instances = {("Van", 15): [16, 3, 5, 10, 11], ("Van", 30): [20, 1, 2, 10, 13], ("Van", 60): [2, 5, 6, 11, 17],
                      ("Kartal", 13): [3, 6, 17, 25, 32]}
         Instances_4_plotting = {("Van", 15): [11], ("Van", 30): [10], ("Van", 60): [2],
                      ("Kartal", 13): [25]}
 
         Instances_4_plotting2 = {("Van", 30): [13]}
-        for (Case_name,NN), vals in Instances_4_plotting2.items():
+        for (Case_name,NN), vals in Instances_4_plotting.items():
             for inst in vals:
                 Data, File_name, ins_type = utils.data_preparation(Case_name, NN, M[NN], inst)
                 # print(f"We are solving {File_name}")
@@ -175,6 +177,6 @@ if __name__ == "__main__":
                     plots.pareto_plot( new_names(Fname, Case_name, ins_type, inst), All_Two_objs[Fname], nondominant=non_dominants)
 
     #for Ins_Type, val in All_nondominat.items():
-    #    plots.TwoObj_percentage(val, Ins_Type)
+        #plots.TwoObj_percentage(val, Ins_Type)
     # Comparision between gini and IAAF
-    plots.GiniVsIAAF(nonD_sols_Full_info)
+    # plots.GiniVsIAAF(nonD_sols_Full_info)
