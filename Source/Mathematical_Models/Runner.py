@@ -26,7 +26,7 @@ if __name__ == "__main__":
         results = {}
         M = {60: 9, 30: 5, 15: 3, 13: 3}
 
-        for inst in [2,5,7,8,9,11,14,17,18,19,20,23,24,26,29,30]: #range(16, 21):
+        for inst in [21]: #range(16, 21):
 
             Data, File_name,_ = utils.data_preparation(Case_name, NN, M[NN], inst)
             print(f"We are solving {File_name}")
@@ -34,7 +34,7 @@ if __name__ == "__main__":
             start = time()
             # best_obj, LB, Runtime, GAP = Model1(Data, Data.R)
             # best_obj, LB, Runtime, GAP = Model2(Data, Data.R)
-            best_obj, LB, Runtime, GAP, _, _ = Model1_V2(Data, Data.R, SecondObjOnly=False)
+            best_obj, LB, Runtime, GAP, _, _, _ = Model1_V2(Data, Data.R, SecondObjOnly=False)
             print(f"The optimal objective is {best_obj}")
             results[File_name] = [best_obj, LB, Runtime, GAP]
             Model_runtime = time()-start
