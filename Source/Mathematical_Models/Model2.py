@@ -51,6 +51,7 @@ def Model2(Data, R, SecondObjOnly=False, FirstObjOnly=False):
     G = Data.G
     Gc = Data.Gc
     Lambda = Data.Lambda
+    Alpha = Data.Alpha
     Dis = Data.distances
     if FirstObjOnly:
         Gamma = 0
@@ -79,7 +80,7 @@ def Model2(Data, R, SecondObjOnly=False, FirstObjOnly=False):
         tp = CF_MIP.addVars(Gc.nodes, Gc.nodes, lb=0, name="tp")
         tn = CF_MIP.addVars(Gc.nodes, Gc.nodes, lb=0, name="tn")
 
-        CF_MIP.setObjective(quicksum(G.nodes[i]['demand'] - v[i] for i in Gc.nodes)
+        CF_MIP.setObjective(Alpha * quicksum(G.nodes[i]['demand'] - v[i] for i in Gc.nodes)
                         + (Lambda/TotalD) * quicksum(tp[i, j] + tn[i, j] for i, j in tp.keys())
                         - (Gamma/R) * (Data.Total_dis_epsilon-quicksum(Dis[i, j]*x[i, j] for i, j in x.keys() if j != NN+1)))
         CF_MIP.addConstrs(tp[i, j] - tn[i, j] ==
@@ -140,5 +141,7 @@ def Model2(Data, R, SecondObjOnly=False, FirstObjOnly=False):
         absGini = ut.calculate_the_obj(Data, Tours, RDP)
         GiniIndex = ut.calculate_Gini_index(Data, RDP)
         TT_Time = sum([Time_Calc(Dis, r) for r in Tours])
+        print(Vv)
+        Total_unS = sum([G.nodes[n]['demand']  - Vv[n] for n in Vv])
     print(CF_MIP.objVal, CF_MIP.ObjBound, CF_MIP.Runtime,  CF_MIP.MIPGap)
-    return CF_MIP.objVal, CF_MIP.ObjBound, CF_MIP.Runtime,  CF_MIP.MIPGap, absGini, TT_Time, GiniIndex
+    return CF_MIP.objVal, CF_MIP.ObjBound, CF_MIP.Runtime,  CF_MIP.MIPGap, absGini, TT_Time, GiniIndex, Total_unS
