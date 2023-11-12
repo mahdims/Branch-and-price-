@@ -16,6 +16,7 @@ from itertools import *
 from gurobipy import *
 from Pricing import Pricing_GRASP as PR
 from Pricing import Path
+from labeling_Alg.labeling import run_labeling_alg
 import copy
 import warnings
 
@@ -303,6 +304,10 @@ def create_new_columns(Data, R, All_seq, nodes2keep, nodes2avoid, Duals, Col_dic
     flag = ''
     All_new_cols_IDs = []
     cols_2_remove = []
+    ## TODO testing the labeling alg, please change it later
+    run_labeling_alg(Data, dis, All_seq, nodes2keep, nodes2avoid, Duals, R)
+
+
     we_found_cols, Col_dic, All_new_cols_IDs, cols_2_remove = Columns_with_negitive_costs(Data, R, Duals, Col_dic, cuts)
 
     if we_found_cols:
