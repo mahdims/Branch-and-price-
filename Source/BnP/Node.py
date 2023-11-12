@@ -104,7 +104,7 @@ class Node:
 
     def Run_initial_heuristic(self):
         # This function Generates some new R_D according to new dis (edges to avoid)
-        NOS = 2 #+ (self.ID == 0)
+        NOS = 1 #+ (self.ID == 0)
         F_Sols, F0_sol, self.feasible = Alg.Initial_feasibleSol(Node.Data, self.All_seq,self.Dis, keeps=self.nodes2keep,
                                                         avoids=self.nodes2avoid, number_of_sols=NOS)
         new_routes = []

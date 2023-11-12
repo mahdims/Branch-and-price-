@@ -351,7 +351,7 @@ def Initial_feasibleSol(Data, All_seq,  dis, keeps, avoids, number_of_sols):
     no_success = 0
     new_sols = []
     best_F0_sol = 0
-    while initial_Sol_count < number_of_sols and no_success < 10:
+    while initial_Sol_count < number_of_sols and no_success < 2:
 
         new_sol = CW(Data, All_seq, dis)
         #new_sol = greedy_build(Data, All_seq,dis,  alpha, beta)
