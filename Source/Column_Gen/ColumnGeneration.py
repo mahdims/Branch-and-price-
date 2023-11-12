@@ -313,12 +313,13 @@ def create_new_columns(Data, R, All_seq, nodes2keep, nodes2avoid, Duals, Col_dic
         GRASP_S_time = time.time()
         (Heuristic_works, heuristic_paths, heuristic_path_value) = PR.GRASP(Data, All_seq, nodes2keep,
                                                                             nodes2avoid, Duals, R)
-        logger.info(f"GRASP run time: {time.time() - GRASP_S_time}")
         # if the GRASP sol is too week just consider as non success
+        max_NRC_grasp = 0
         if Heuristic_works:
+            max_NRC_grasp = max([path.value for path in heuristic_paths])
             if all([path.value > -0.001 for path in heuristic_paths]):
                 Heuristic_works = 0
-
+        logger.info(f"GRASP run time: {round(time.time() - GRASP_S_time, 3)} | RNC: {round(max_NRC_grasp,3)}")
         RDs_are_bad = 0
         if Heuristic_works:
             flag = "GRASP"
@@ -346,6 +347,7 @@ def create_new_columns(Data, R, All_seq, nodes2keep, nodes2avoid, Duals, Col_dic
             Sub.reset()
             mip_time_start = time.time()
             Sub = Set_sub_obj(Data, R, Gc, dis, Duals, Sub)
+
             Sub.optimize(subtourelim)
 
             if Sub.status != 2:
@@ -354,8 +356,8 @@ def create_new_columns(Data, R, All_seq, nodes2keep, nodes2avoid, Duals, Col_dic
 
             flag = "GUROBI"
             # print(f"Sub Problem variables{Sub.NumVars} and runtime {Sub.Runtime}")
-            logger.info(f"MIP run time {time.time() - mip_time_start}")
-            logger.info("Sub Problem optimal value: %f" % Sub.objVal)
+            logger.info(f"MIP run time {round(time.time() - mip_time_start,3)} | RNC : {round(Sub.objVal,3)}")
+            # logger.info("Sub Problem optimal value: %f" % Sub.objVal)
             sub_obj = Sub.objVal
             MIP_solutions = Get_alternative_sols(Data, Sub)
             for New_Route in MIP_solutions:
@@ -428,7 +430,7 @@ def ColumnGen(Data, MaxTime, All_seq, R, RMP, G_in, Col_dic, dis, nodes2keep, no
         SolvedBy = ""
         RMP.reset()
         RMP.optimize()
-        logger.info(f"Master run time : {RMP.Runtime} | # columns : {RMP.NumVars}")
+
 
         if RMP.status != 2:
             RMP.write("Master_infeasible.lp")
@@ -437,7 +439,8 @@ def ColumnGen(Data, MaxTime, All_seq, R, RMP, G_in, Col_dic, dis, nodes2keep, no
             warnings.warn("The run will be terminated")
             return 0, RMP, Data.BigM, [], Col_dic
         RMP_objvals.append(RMP.objVal)
-        logger.info("Master Problem Optimal Value: %f" % RMP.objVal)
+        logger.info(f"Master run time : {round(RMP.Runtime, 3)} | obj:  {RMP.objVal} |# columns : {len(Col_dic)}")
+        # logger.info("Master Problem Optimal Value: %f" % RMP.objVal)
 
         # @TODO this is to cut the tail effect in CG but should we use it?
         if RMP_objvals[-1] * 0.99 <= RMP.objVal <= RMP_objvals[-1] * 1.01 \
