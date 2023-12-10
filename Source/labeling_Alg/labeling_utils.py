@@ -38,7 +38,7 @@ def relabel_source_sink(G,
     return G
 
 
-def add_cspy_edge_attributes(data, G):
+def add_edge_attributes(data, duals,G):
     """
     Set edge attributes required for cspy
     """

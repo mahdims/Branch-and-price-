@@ -1,20 +1,20 @@
 from networkx import DiGraph
-from labeling_Alg.labeling_utils import relabel_source_sink, add_cspy_edge_attributes
+from labeling_Alg.labeling_utils import relabel_source_sink, add_edge_attributes
 from numpy import array
 from cspy import REFCallback, Tabu, BiDirectional
 
 
 WALKING_SPEED = 3
-def graph_preparation(data, M):
+def graph_preparation(data, duals):
 
     R = ['mono', 'sights', 'shift', 'travel-time', 'delivery-time']
 
     # Convert MultiGraph into a Digraph with attribute 'n_res'
-    G = DiGraph(M, directed=True, n_res=len(R))
+    G = DiGraph(data.G, directed=True, n_res=len(R))
     # Relabel source node to "Source" and sink node to "Sink" (see function for more details)
     G = relabel_source_sink(G)
     # Add res_cost and other resource attributes (see function for more details)
-    G = add_cspy_edge_attributes(data, G)
+    G = add_edge_attributes(data, duals, G)
     n_edges = len(G.edges())  # number of edges in network
     print(n_edges)
 
@@ -46,7 +46,7 @@ class MyCallback(REFCallback):
 
 
 def run_labeling_alg(Data, dis, All_seq, nodes2keep, nodes2avoid, Duals, R):
-    G =  graph_preparation(Data.G)
+    G =  graph_preparation(Data, Duals)
     # Recall
     #     R = ['mono', 'sights', 'shift', 'travel-time', 'delivery-time']
     max_res = [n_edges, 5*n_edges, 5, 5, 5]
