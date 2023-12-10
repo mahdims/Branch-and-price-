@@ -389,6 +389,12 @@ def data_preparation(Case_name, NN, M, inst):
             Data.Gc.nodes[n]["demand"] = 10
             Data.total_demand += 10
 
+    # Add distances as a edge attribute to the graph
+    for edg in Data.G.edges():
+        Data.G[edg[0]][edg[1]]['distance'] = Data.distances[edg[0], edg[1]]
+        if edg in Data.Gc.edges():
+            Data.Gc[edg[0]][edg[1]]['distance'] = Data.distances[edg[0], edg[1]]
+
     return Data, File_name, ins_type
 
 
