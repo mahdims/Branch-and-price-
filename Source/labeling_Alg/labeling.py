@@ -61,7 +61,7 @@ class MyCallback(REFCallback):
         # distance resource
         new_res[1] += self.G.edges[i,j]['distance']
         # Update 'demand' resource
-        new_res[2] += git self.G.nodes[j]['demand']
+        new_res[2] += self.G.nodes[j]['demand']
         # # Update 'cost_edge' resource
         new_res[3] += self.G.edges[i, j]['res_cost'][3]
         # Extract the 'delivery_cost' resource

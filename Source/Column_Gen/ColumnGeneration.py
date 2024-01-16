@@ -304,9 +304,8 @@ def create_new_columns(Data, R, All_seq, nodes2keep, nodes2avoid, Duals, Col_dic
     flag = ''
     All_new_cols_IDs = []
     cols_2_remove = []
-    ## TODO testing the labeling alg, please change it later
-    run_labeling_alg(Data, dis, All_seq, nodes2keep, nodes2avoid, Duals, R)
 
+    ## run_labeling_alg(Data, dis, All_seq, nodes2keep, nodes2avoid, Duals, R)
 
     we_found_cols, Col_dic, All_new_cols_IDs, cols_2_remove = Columns_with_negitive_costs(Data, R, Duals, Col_dic, cuts)
 
@@ -444,7 +443,7 @@ def ColumnGen(Data, MaxTime, All_seq, R, RMP, G_in, Col_dic, dis, nodes2keep, no
             warnings.warn("The run will be terminated")
             return 0, RMP, Data.BigM, [], Col_dic
         RMP_objvals.append(RMP.objVal)
-        logger.info(f"Master run time : {round(RMP.Runtime, 3)} | obj:  {RMP.objVal} |# columns : {len(Col_dic)}")
+        logger.info(f"Master run time : {round(RMP.Runtime, 3)} | obj:  {round(RMP.objVal,2)} |# columns : {len(Col_dic)}")
         # logger.info("Master Problem Optimal Value: %f" % RMP.objVal)
 
         # @TODO this is to cut the tail effect in CG but should we use it?
