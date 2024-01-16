@@ -307,9 +307,9 @@ def create_new_columns(Data, R, All_seq, nodes2keep, nodes2avoid, Duals, Col_dic
 
     ## run_labeling_alg(Data, dis, All_seq, nodes2keep, nodes2avoid, Duals, R)
 
-    we_found_cols, Col_dic, All_new_cols_IDs, cols_2_remove = Columns_with_negitive_costs(Data, R, Duals, Col_dic, cuts)
+    # we_found_cols, Col_dic, All_new_cols_IDs, cols_2_remove = Columns_with_negitive_costs(Data, R, Duals, Col_dic, cuts)
 
-    if we_found_cols:
+    if False:
         flag = "RECALC"
         return flag, Col_dic, All_new_cols_IDs,cols_2_remove, -10
     else:
