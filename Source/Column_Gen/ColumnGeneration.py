@@ -298,93 +298,53 @@ def Get_alternative_sols(Data, Sub):
 
 # @profile
 def create_new_columns(Data, R, All_seq, nodes2keep, nodes2avoid, Duals, Col_dic, Gc, dis, Sub, cuts):
-    # First, we create new delivery for existing routes in hope of finding reduce negative columns.
-    # If not successful we run the GRASP heuristic
-    # If not successful we run the Gurobi on pricing mathematical model
+    # We run the Gurobi on pricing mathematical model
     flag = ''
     All_new_cols_IDs = []
     cols_2_remove = []
-
-    ## run_labeling_alg(Data, dis, All_seq, nodes2keep, nodes2avoid, Duals, R)
-
-    we_found_cols, Col_dic, All_new_cols_IDs, cols_2_remove = Columns_with_negitive_costs(Data, R, Duals, Col_dic, cuts)
-
+    ## we_found_cols, Col_dic, All_new_cols_IDs, cols_2_remove = Columns_with_negitive_costs(Data, R, Duals, Col_dic, cuts)
+    we_found_cols = False
     if we_found_cols:
         flag = "RECALC"
         return flag, Col_dic, All_new_cols_IDs,cols_2_remove, -10
     else:
-        # Next, we try the GRASP heuristic
-        GRASP_S_time = time.time()
-        (Heuristic_works, heuristic_paths, heuristic_path_value) = PR.GRASP(Data, All_seq, nodes2keep,
-                                                                            nodes2avoid, Duals, R)
-        # if the GRASP sol is too week just consider as non success
-        max_NRC_grasp = 0
-        if Heuristic_works:
-            max_NRC_grasp = max([path.value for path in heuristic_paths])
-            if all([path.value > -0.001 for path in heuristic_paths]):
-                Heuristic_works = 0
-        logger.info(f"GRASP run time: {round(time.time() - GRASP_S_time, 3)} | RNC: {round(max_NRC_grasp,3)}")
-        RDs_are_bad = 0
-        if Heuristic_works:
-            flag = "GRASP"
-            for path in heuristic_paths:
-                New_Route = RD.RouteDel(path.path, "GRASP")
-                New_Route.set_RDP([0] + list(path.q))
-                # check whether the new route is unique or not
-                indicator, Col_ID = New_Route.Is_unique(Col_dic)
-                if indicator == 1:
-                    RDP_ID = 1
-                    Col_dic[Col_ID] = New_Route
-                    All_new_cols_IDs.append((Col_ID, RDP_ID))
-                elif indicator == 2:
-                    RDP_ID = Col_dic[Col_ID].add_RDP(New_Route.RDP[1])
-                    All_new_cols_IDs.append((Col_ID, RDP_ID))
-                else:
-                    RDs_are_bad += 1
+        # Next Solve it with mathematical model
+        Sub.reset()
+        mip_time_start = time.time()
+        Sub = Set_sub_obj(Data, R, Gc, dis, Duals, Sub)
 
-            RDs_are_bad = int(RDs_are_bad/len(heuristic_paths))
+        Sub.optimize(subtourelim)
 
-            return flag, Col_dic, All_new_cols_IDs, cols_2_remove, -10
+        if Sub.status != 2:
+            print("infeasible sub problem by model")
+            return "Sub_Inf", Col_dic, All_new_cols_IDs, cols_2_remove,  0
 
-        if not Heuristic_works or RDs_are_bad:
-            # Next Solve it with mathematical model
-            Sub.reset()
-            mip_time_start = time.time()
-            Sub = Set_sub_obj(Data, R, Gc, dis, Duals, Sub)
-
-            Sub.optimize(subtourelim)
-
-            if Sub.status != 2:
-                print("infeasible sub problem by model")
-                return "Sub_Inf", Col_dic, All_new_cols_IDs, cols_2_remove,  0
-
-            flag = "GUROBI"
-            # print(f"Sub Problem variables{Sub.NumVars} and runtime {Sub.Runtime}")
-            logger.info(f"MIP run time {round(time.time() - mip_time_start,3)} | RNC : {round(Sub.objVal,3)}")
-            # logger.info("Sub Problem optimal value: %f" % Sub.objVal)
-            sub_obj = Sub.objVal
-            MIP_solutions = Get_alternative_sols(Data, Sub)
-            for New_Route in MIP_solutions:
-                indicator, Col_ID = New_Route.Is_unique(Col_dic)
-                if indicator == 1:
-                    RDP_ID = 1
-                    Col_dic[Col_ID] = New_Route
-                    All_new_cols_IDs.append((Col_ID, RDP_ID))
-                elif indicator == 2:
-                    RDP_ID = Col_dic[Col_ID].add_RDP(New_Route.RDP[1])
-                    All_new_cols_IDs.append((Col_ID, RDP_ID))
-                else:
-                    if Sub.objVal < -0.000002:
-                        print(f"The obj I calculate "
-                              f"{Calculate_the_subproblem_obj(Data, R, Duals,New_Route,New_Route.RDP[1][1:] ,[])}")
-                        print(f"The sub problem found an exiting route similar to {Col_ID}!")
-                        print("New:")
-                        print(New_Route)
-                        print("Old:")
-                        print(Col_dic[Col_ID])
-                        sub_obj = 0
-                    continue
-            return flag, Col_dic, All_new_cols_IDs, cols_2_remove, sub_obj
+        flag = "GUROBI"
+        # print(f"Sub Problem variables{Sub.NumVars} and runtime {Sub.Runtime}")
+        logger.info(f"MIP run time {round(time.time() - mip_time_start,3)} | RNC : {round(Sub.objVal,3)}")
+        # logger.info("Sub Problem optimal value: %f" % Sub.objVal)
+        sub_obj = Sub.objVal
+        MIP_solutions = Get_alternative_sols(Data, Sub)
+        New_Route = MIP_solutions[0]
+        indicator, Col_ID = New_Route.Is_unique(Col_dic)
+        if indicator == 1:
+            RDP_ID = 1
+            Col_dic[Col_ID] = New_Route
+            All_new_cols_IDs.append((Col_ID, RDP_ID))
+        elif indicator == 2:
+            RDP_ID = Col_dic[Col_ID].add_RDP(New_Route.RDP[1])
+            All_new_cols_IDs.append((Col_ID, RDP_ID))
+        else:
+            if Sub.objVal < -0.000002:
+                print(f"The obj I calculate "
+                      f"{Calculate_the_subproblem_obj(Data, R, Duals,New_Route,New_Route.RDP[1][1:] ,[])}")
+                print(f"The sub problem found an exiting route similar to {Col_ID}!")
+                print("New:")
+                print(New_Route)
+                print("Old:")
+                print(Col_dic[Col_ID])
+                sub_obj = 0
+        return flag, Col_dic, All_new_cols_IDs, cols_2_remove, sub_obj
 
 
 def optimality_cut_seperation(Data, Col_dic, Y):
