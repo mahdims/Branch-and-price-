@@ -14,7 +14,6 @@ def Gini(demands):
     gini = 0
     for d1, d2 in it.combinations(demands, 2):
         gini += abs(d1-d2)
-
     return gini/len(demands)
 
 

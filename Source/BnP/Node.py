@@ -61,9 +61,10 @@ class Node:
             # prepare the seq list
             self.All_seq, self.connected_list, self.feasible = Seq.Create_seq(Node.Data, self.nodes2keep["N"])
             # Add feasible solutions to the Col Dic by initial heuristic
-            self.Run_initial_heuristic()
+            if level ==0:
+                self.Run_initial_heuristic()
             if not self.feasible and len(self.Col_dic) == 0:
-                pass
+                self.Run_initial_heuristic()
                 # @TODO If the initial alg can't find a feasible solution then run the subproblem to do so, it is unlikly
                 # Sub = Sub_model.SubProblem(Node.Data, self.G, self.Dis, self.nodes2keep, self.nodes2avoid)
                 # Duals =[]
