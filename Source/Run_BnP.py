@@ -29,20 +29,13 @@ if __name__ == "__main__":
     Case_name = "Van"
     #Case_name = "Kartal"
 
-    for NN in [15]:  # [60,30,15]:
+    for NN in [60]:  # [60,30,15]:
         Time = {15: 7200, 13: 7200, 30: 7200, 60: 7200}
         MaxTime = Time[NN]
         M = {60: 9, 30: 5, 15: 3, 13: 3}
-        for inst in [15]: #[22, 24, 29, 30]:# range(1,10):
+        for inst in range(1, 16): #[22, 24, 29, 30]:# range(1,10):
             Data, File_name,_ = utils.data_preparation(Case_name, NN, M[NN], inst)
             Data = utils.set_parameters(Data)
-            # TEST
-            # Data.M = 5
-            # MQ = Data.M * Data.Q
-            # Supply = Data.G.nodes[0]["supply"]
-            # Data.Q = 20000
-            # Data.Lambda = 0
-            # END TEST
 
             print(f"We are solving {File_name}")
             results = BnP.branch_and_bound(Data, MaxTime, File_name)

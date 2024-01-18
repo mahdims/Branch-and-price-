@@ -475,8 +475,8 @@ def ColumnGen(Data, MaxTime, All_seq, R, RMP, G_in, Col_dic, dis, nodes2keep, no
 
     if RMP.status != 2:
         RMP.optimize()
-
-    Y = Get_the_Y_variables(RMP)
+    if RMP.status == 2:
+        Y = Get_the_Y_variables(RMP)
     # optimality_cut_seperation(Data, Col_dic, Y)
     # print("Master Problem Optimal Value: %f" %RMP.objVal)
     return 1, RMP, RMP_objvals[-1], Y, Col_dic
