@@ -369,7 +369,7 @@ def Initial_feasibleSol(Data, All_seq,  dis, keeps, avoids, number_of_sols):
 
         else:
             no_success += 1
-            logger.warn(f"TS failed {no_success} times to find a feasible solution")
+            logger.warning(f"TS failed {no_success} times to find a feasible solution")
             if len(new_sols) >=1:
                 break
             # input("Press any key to continue")

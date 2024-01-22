@@ -12,6 +12,10 @@ from BnP.Node import Node
 from os import path
 import heapq
 
+def avg(numbers):
+    if not numbers:
+        return 0
+    return sum(numbers) / len(numbers)
 
 def print_routes(node):
 
@@ -105,28 +109,28 @@ def branch_and_bound(Data, MaxTime, Filename):
     root = Node(0, 0, 0, "center", {}, Data.G, nodes2keep=nodes2keep, nodes2avoid=nodes2avoid)
     # Stack is the pool of feasible BnB nodes
     stack = [root]
-    ncol = len(root.Col_dic)
+    ncol = [len(root.Col_dic)]
     heapq.heapify(stack)
     Node.LB_UB_GAP_update(stack, root, start)
 
     print("Start the BnP with root value %s" % Node.LowerBound)
     if root.integer(): # check if we need to continue
 
-        print_updates(start, Filename, ncol)
+        print_updates(start, Filename, avg(ncol) )
         UB, LB, time2UB, Gap,NCount = Node.UpperBound, Node.LowerBound, Node.time2UB, Node.Gap, Node.NodeCount
         Node.reset()
-        return str(round(UB,3)), str(round(LB,3)), str(round(Gap,3)), str(round(time2UB,3)), str(round(Elapsed_time,3)), str(NCount)
+        return str(round(UB,3)), str(round(LB,3)), str(round(Gap,3)), str(round(time2UB,3)), str(round(Elapsed_time,3)), str(NCount), str(avg(ncol))
 
     while len(stack) and Node.Gap >= 0.009999999 and Elapsed_time < MaxTime:
 
         Elapsed_time = round(time.time() - start, 3)
 
-        print_updates(start, Filename, ncol)
+        print_updates(start, Filename, avg(ncol) )
 
         # best first search strategy
         print([(n.level, n.ID, round(n.lower_bound, 3)) for n in heapq.nsmallest(4, stack)])
         node = heapq.heappop(stack)
-        ncol = len(node.Col_dic)
+        ncol.append(len(node.Col_dic))
         # Fathom by bound
         if node.lower_bound >= Node.UpperBound:
             print(f"Closed due to bound : Node {node.ID}")
@@ -160,9 +164,9 @@ def branch_and_bound(Data, MaxTime, Filename):
 
         node.delete()
 
-    print_updates(start, Filename, ncol)
+    print_updates(start, Filename, avg(ncol))
 
     Elapsed_time = round(time.time() - start, 3)
     UB, LB, time2UB, Gap, NCount = Node.UpperBound, Node.LowerBound, Node.time2UB, Node.Gap, Node.NodeCount
     Node.reset()
-    return str(round(UB,3)), str(round(LB,3)), str(round(Gap,3)), str(round(time2UB,3)), str(round(Elapsed_time,3)), str(NCount)
+    return str(round(UB,3)), str(round(LB,3)), str(round(Gap,3)), str(round(time2UB,3)), str(round(Elapsed_time,3)), str(NCount), str(avg(ncol))
