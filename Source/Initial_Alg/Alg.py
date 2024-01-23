@@ -358,6 +358,6 @@ def Initial_feasibleSol(Data, All_seq,  dis, keeps, avoids, number_of_sols):
             break
         else:
             no_success += 1
-            logger.warn(f"CW failed {no_success} times to find a feasible solution")
+            logger.warning(f"CW failed {no_success} times to find a feasible solution")
 
     return new_sols, best_F0_sol, len(new_sols) != 0
