@@ -417,6 +417,7 @@ def save_object(obj, filename):
 
 
 def read_object(filename):
+    print(filename)
     with open(filename, 'rb') as input:
         obj = Pick.load(input, encoding='latin1')
     return obj
