@@ -35,6 +35,7 @@ class Node:
     Node_dic2 = {}
     NodeCount = 0
     Tree = nx.Graph()
+    NewCol = {"GRASP": 0, "GUROBI": 0}
     
     def __init__(self, ID,  PID, level, pos, Col_dic, G, nodes2keep={}, nodes2avoid={}, cuts=[], Initial_RDP=None):
         
@@ -51,6 +52,7 @@ class Node:
         self.selected_route = []
         self.Dis = Node.Data.distances
         self.Col_runtime = 0
+        self.newColFinds = {}
         self.cuts = cuts
         self.upper_bound, self.Int_route, self.Int_RDP = float("Inf"), [], []
         self.Total_dis = float("Inf")
@@ -164,10 +166,13 @@ class Node:
         # Start the Column Generation
         start = time()
         while 1:
-            self.feasible, RMP, self.lower_bound, self.Y, self.Col_dic = CG.ColumnGen(Node.Data, Node.MaxTime,self.All_seq, Node.R, RMP, self.G, self.Col_dic,
+            self.feasible, RMP, self.lower_bound, self.Y, self.Col_dic, self.newColFinds = CG.ColumnGen(Node.Data, Node.MaxTime,self.All_seq, Node.R, RMP, self.G, self.Col_dic,
                                                                            self.Dis, self.nodes2keep["E"], self.nodes2avoid["E"], Sub, self.cuts)
             if len(self.Y) == 0:
                 Node.infeasible_master = True
+
+            Node.NewCol["GRASP"] += self.newColFinds["GRASP"]
+            Node.NewCol["GUROBI"] += self.newColFinds["GUROBI"]
             # TEST
             # utils.check_branching(Node.Data, self.Col_dic, self.nodes2avoid["E"], self.nodes2keep["E"])
             #for key, col in self.Col_dic.items():

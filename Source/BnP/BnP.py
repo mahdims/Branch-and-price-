@@ -13,6 +13,10 @@ from os import path
 import heapq
 
 
+def avg(array):
+    return sum(array)/len(array)
+
+
 def print_routes(node):
 
     if node:
@@ -76,8 +80,8 @@ def print_updates(start, Filename, ncol):
 
     # Printing the table
     print(header_format.format("LB", "UB", "GAP", "Elapsed T", "Time_2_best", "NodeCount", "ncol"))
-    print(data_format.format(round(Node.LowerBound, 2), round(Node.UpperBound, 2), Node.Gap, Elapsed_time, Node.time2UB, Node.NodeCount, ncol))
-    results = [Node.LowerBound, Node.UpperBound, Node.Gap, Node.time2UB, Elapsed_time]
+    print(data_format.format(round(Node.LowerBound, 2), round(Node.UpperBound, 2), Node.Gap, Elapsed_time, Node.time2UB, Node.NodeCount, avg(ncol)))
+    results = [Node.LowerBound, Node.UpperBound, Node.Gap, Node.time2UB, Elapsed_time, Node.NodeCount, avg(ncol)]
     BASE_DIR = path.dirname(path.dirname(path.dirname(path.abspath(__file__))))
     utils.write_log(results, f"{BASE_DIR}/Data/Results/{Filename}.txt", Node.best_Route, Node.best_RDP)
 
@@ -105,9 +109,11 @@ def branch_and_bound(Data, MaxTime, Filename):
     root = Node(0, 0, 0, "center", {}, Data.G, nodes2keep=nodes2keep, nodes2avoid=nodes2avoid)
     # Stack is the pool of feasible BnB nodes
     stack = [root]
-    ncol = len(root.Col_dic)
+    ncol = [len(root.Col_dic)]
     heapq.heapify(stack)
     Node.LB_UB_GAP_update(stack, root, start)
+
+    avgNewCol = {"GUROBI":0, "GRASP":0}
 
     print("Start the BnP with root value %s" % Node.LowerBound)
     if root.integer(): # check if we need to continue
@@ -115,7 +121,7 @@ def branch_and_bound(Data, MaxTime, Filename):
         print_updates(start, Filename, ncol)
         UB, LB, time2UB, Gap,NCount = Node.UpperBound, Node.LowerBound, Node.time2UB, Node.Gap, Node.NodeCount
         Node.reset()
-        return str(round(UB,3)), str(round(LB,3)), str(round(Gap,3)), str(round(time2UB,3)), str(round(Elapsed_time,3)), str(NCount)
+        return str(round(UB,3)), str(round(LB,3)), str(round(Gap,3)), str(round(time2UB,3)), str(round(Elapsed_time,3)), str(NCount), str(avg(ncol)), str(Node.NewCol["GUROBI"]), str(Node.NewCol["GRASP"])
 
     while len(stack) and Node.Gap >= 0.009999999 and Elapsed_time < MaxTime:
 
@@ -126,7 +132,7 @@ def branch_and_bound(Data, MaxTime, Filename):
         # best first search strategy
         print([(n.level, n.ID, round(n.lower_bound, 3)) for n in heapq.nsmallest(4, stack)])
         node = heapq.heappop(stack)
-        ncol = len(node.Col_dic)
+        ncol.append(len(node.Col_dic))
         # Fathom by bound
         if node.lower_bound >= Node.UpperBound:
             print(f"Closed due to bound : Node {node.ID}")
@@ -163,6 +169,8 @@ def branch_and_bound(Data, MaxTime, Filename):
     print_updates(start, Filename, ncol)
 
     Elapsed_time = round(time.time() - start, 3)
+    avgNewCol["GUROBI"] = Node.NewCol["GUROBI"] / Node.NodeCount
+    avgNewCol["GRASP"]  = Node.NewCol["GRASP"] / Node.NodeCount
     UB, LB, time2UB, Gap, NCount = Node.UpperBound, Node.LowerBound, Node.time2UB, Node.Gap, Node.NodeCount
     Node.reset()
-    return str(round(UB,3)), str(round(LB,3)), str(round(Gap,3)), str(round(time2UB,3)), str(round(Elapsed_time,3)), str(NCount)
+    return str(round(UB,3)), str(round(LB,3)), str(round(Gap,3)), str(round(time2UB,3)), str(round(Elapsed_time,3)), str(NCount), str(avg(ncol)), str(avgNewCol["GUROBI"]) , str(avgNewCol["GRASP"])

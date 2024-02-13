@@ -301,10 +301,9 @@ def create_new_columns(Data, R, All_seq, nodes2keep, nodes2avoid, Duals, Col_dic
     flag = ''
     All_new_cols_IDs = []
     cols_2_remove = []
-
-    ## run_labeling_alg(Data, dis, All_seq, nodes2keep, nodes2avoid, Duals, R)
-
-    # we_found_cols, Col_dic, All_new_cols_IDs, cols_2_remove = Columns_with_negitive_costs(Data, R, Duals, Col_dic, cuts)
+    # run_labeling_alg(Data, dis, All_seq, nodes2keep, nodes2avoid, Duals, R)
+    # we_found_cols, Col_dic, All_new_cols_IDs, cols_2_remove =
+    # Columns_with_negitive_costs(Data, R, Duals, Col_dic, cuts)
 
     if False:
         flag = "RECALC"
@@ -340,7 +339,6 @@ def create_new_columns(Data, R, All_seq, nodes2keep, nodes2avoid, Duals, Col_dic
                     RDs_are_bad += 1
 
             RDs_are_bad = int(RDs_are_bad/len(heuristic_paths))
-
             return flag, Col_dic, All_new_cols_IDs, cols_2_remove, -10
 
         if not Heuristic_works or RDs_are_bad:
@@ -425,20 +423,19 @@ def ColumnGen(Data, MaxTime, All_seq, R, RMP, G_in, Col_dic, dis, nodes2keep, no
     Subobj = -1
     RMP_objvals.append(float("Inf"))
     tail_counter = 0
-
+    colFinds = {"GRASP": 0, "GUROBI": 0}
     while Subobj < Stoping_R_cost and tail_counter < 100 and time.time() < MaxTime:
         # STEP1: Solve the Master problem
         SolvedBy = ""
         RMP.reset()
         RMP.optimize()
 
-
         if RMP.status != 2:
             RMP.write("Master_infeasible.lp")
             # Report that the problem in current node is infeasible
             print(f"Master Problem exited with status {RMP.status}")
             warnings.warn("The run will be terminated")
-            return 0, RMP, Data.BigM, [], Col_dic
+            return 0, RMP, Data.BigM, [], Col_dic, colFinds
         RMP_objvals.append(RMP.objVal)
         logger.info(f"Master run time : {round(RMP.Runtime, 3)} | obj:  {round(RMP.objVal,2)} |# columns : {len(Col_dic)}")
         # logger.info("Master Problem Optimal Value: %f" % RMP.objVal)
@@ -465,6 +462,12 @@ def ColumnGen(Data, MaxTime, All_seq, R, RMP, G_in, Col_dic, dis, nodes2keep, no
         if Subobj > Stoping_R_cost and SolvedBy == "GUROBI":
             continue
 
+        # calculate the total number of generated column with each pricing approach.
+        if SolvedBy == "GUROBI":
+            colFinds["GUROBI"] += len(All_new_cols_IDs)
+        elif SolvedBy == "GRASP":
+            colFinds["GRASP"] += len(All_new_cols_IDs)
+
         # STEP4: Add the new cols and update the master problem
         for Col_ID, RDP_ID in All_new_cols_IDs:
             RMP = Update_Master_problem(Gc, R, cuts, RMP, Col_dic, Col_ID, RDP_ID)
@@ -476,4 +479,4 @@ def ColumnGen(Data, MaxTime, All_seq, R, RMP, G_in, Col_dic, dis, nodes2keep, no
     Y = Get_the_Y_variables(RMP)
     # optimality_cut_seperation(Data, Col_dic, Y)
     # print("Master Problem Optimal Value: %f" %RMP.objVal)
-    return 1, RMP, RMP_objvals[-1], Y, Col_dic
+    return 1, RMP, RMP_objvals[-1], Y, Col_dic, colFinds
