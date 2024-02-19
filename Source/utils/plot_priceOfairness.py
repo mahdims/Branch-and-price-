@@ -17,15 +17,20 @@ data = {'Instance': ['Kartal_A', 'Kartal_T', 'Kartal_VT', 'Kartal_VTL', 'Van15_A
         'IAAF_Gini': [0.13433, 0.09120, 0.03180, 0.02750, 0.22280, 0.07240, 0.07240, 0.22050, 0.23300, 0.09200, 0.09160, 0.23125, 0.22860, 0.10900, 0.10940, 0.21160],
         'IAAF_UnsatDemand': [0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001, 0.001]}
 
-def add_bar_labels(bars, ax):
-    for bar in bars:
+def add_bar_labels(bars, ax, hoffsetflag =0 ):
+    for i, bar in enumerate(bars):
         height = bar.get_height()
+        if hoffsetflag:
+            hoffset = 4
+        else:
+            hoffset = -3
+
         ax.annotate('{:.2f}'.format(height),
                     xy=(bar.get_x() + bar.get_width() / 2, height),
-                    xytext=(0, 3),  # 3 points vertical offset
+                    xytext=(hoffset, 3),  # 3 points vertical offset
                     textcoords="offset points",
                     ha='center', va='bottom',
-                    fontsize=7)
+                    fontsize=9.5)
 
 def plot_1():
 
@@ -33,11 +38,11 @@ def plot_1():
     df = pd.DataFrame(data)
 
     # Set bar width and positions
-    bar_width = 0.25
+    bar_width = 0.6
     x = np.arange(len(df['Instance']))
 
     # Add space between instance types
-    spacing = 1
+    spacing = 3
     x = np.array([i + int(i/4) * spacing for i in x])
 
     fig, ax = plt.subplots()
@@ -54,7 +59,7 @@ def plot_1():
 
     # Configure the x-axis
     ax.set_xticks(x)
-    ax.set_xticklabels(df['Instance'])
+    ax.set_xticklabels(df['Instance'], rotation=45)
 
     # Configure the y-axis
     ax.set_ylabel('Percentage Change')
@@ -73,7 +78,7 @@ def plot_2():
     import numpy as np
 
     width = 14
-    height = 6
+    height = 7
 
     df = pd.DataFrame(data)
 
@@ -91,14 +96,13 @@ def plot_2():
     rects1 = ax1.bar(x-bar_width/2, df['MinUnD_Gini'], bar_width, label='MinUnD - Gini Index')
     rects2 = ax1.bar(x+bar_width/2, df['IAAF_Gini'], bar_width, label='IAAF - Gini Index', hatch='/', edgecolor='black', alpha=0.5)
     add_bar_labels(rects1, ax1)
-    add_bar_labels(rects2, ax1)
+    add_bar_labels(rects2, ax1, 1)
 
-    ax1.set_xticks(x)
-    ax1.set_xticklabels(df['Instance'], fontsize=8)
-    ax1.set_xlabel('Instances type', fontsize=13)
-    ax1.set_ylabel('Gini Index', fontsize=13)
-    ax1.legend()
-    plt.title('Comparison of Gini Index for MinUnD and IAAF Objectives',fontsize=14)
+    ax1.set_xticks(x-0.2)
+    ax1.set_xticklabels(df['Instance'], fontsize=13, rotation=45)
+    ax1.set_ylabel('Gini Index', fontsize=15)
+    ax1.legend(fontsize=15)
+    # plt.title('Comparison of Gini Index for MinUnD and IAAF Objectives',fontsize=14)
 
     plt.savefig('Gini_inx.pdf', bbox_inches='tight')
     # Unsatisfied Demand Plot
@@ -108,14 +112,13 @@ def plot_2():
     rects4 = ax2.bar(x+ bar_width/2, df['IAAF_UnsatDemand'], bar_width, label='IAAF - Unsatisfied Demand',
                      hatch='/', edgecolor='black', alpha=0.5)
     add_bar_labels(rects3, ax2)
-    add_bar_labels(rects4, ax2)
+    add_bar_labels(rects4, ax2, 1)
 
-    ax2.set_xticks(x)
-    ax2.set_xticklabels(df['Instance'], fontsize=8)
-    ax2.set_xlabel('Instances type', fontsize=13)
-    ax2.set_ylabel('Percentage Increase in Unsatisfied Demand Compared \n to MinUnD Objective (e.i.,Perfect Efficiency)', fontsize=12)
-    ax2.legend()
-    plt.title('Comparison of Percentage Increase in Unsatisfied Demand for \n MinGini and IAAF Objectives Relative to MinUnD Objective', fontsize=14)
+    ax2.set_xticks(x-0.2)
+    ax2.set_xticklabels(df['Instance'], fontsize=13, rotation=45)
+    ax2.set_ylabel('Percentage Increase in Unsatisfied Demand Compared \n to MinUnD Objective (e.i.,Perfect Efficiency)', fontsize=14)
+    ax2.legend(fontsize=15)
+    # plt.title('Comparison of Percentage Increase in Unsatisfied Demand for \n MinGini and IAAF Objectives Relative to MinUnD Objective', fontsize=14)
 
     plt.savefig('UnD.pdf', bbox_inches='tight')
     # Show the plots

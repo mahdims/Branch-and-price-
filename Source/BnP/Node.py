@@ -321,8 +321,9 @@ class Node:
             self.upper_bound = self.lower_bound
             self.Int_route = [self.Col_dic[i] for (i, j), val in self.Y.items() if val > 0.9]
             self.Int_RDP = [self.Col_dic[i].RDP[j] for (i, j), val in self.Y.items() if val > 0.9]
-            self.Total_dis = sum(route.travel_time for route in self.Int_route)
-            self.Gini = utils.calculate_the_obj(Node.Data, self.Int_route, self.Int_RDP)
+            if self.Int_route:
+                self.Total_dis = sum(route.travel_time for route in self.Int_route)
+                self.Gini = utils.calculate_the_obj(Node.Data, self.Int_route, self.Int_RDP)
 
         return indictor
     

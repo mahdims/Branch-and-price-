@@ -354,6 +354,9 @@ def Initial_feasibleSol(Data, All_seq,  dis, keeps, avoids, number_of_sols):
     while initial_Sol_count < number_of_sols and no_success < 2:
 
         new_sol = CW(Data, All_seq, dis)
+        if not new_sol:
+            no_success += 1
+            continue
         #new_sol = greedy_build(Data, All_seq,dis,  alpha, beta)
         # new_sol = build_a_random_sol(Data, dis, alpha, beta)
         #if len(keeps["E"]) == 0 and len(avoids["E"]) ==0: # Only run for the root node

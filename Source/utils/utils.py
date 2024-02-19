@@ -65,6 +65,7 @@ def calculate_the_obj(Data, Routes, RDPs):
     Gc = Data.Gc
     # create the mapping to find the node quantities  :))
     Q_mapping = {}
+
     for i in Gc.nodes:
         for r_ID, route in enumerate(Routes):
             if isinstance(route[0], int):

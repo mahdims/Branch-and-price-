@@ -29,7 +29,6 @@ def print_routes(node):
             if node.Int_route:
                 if node.Col_dic[r] not in node.Int_route:
                     print("This is not the int route")
-
     else:
         for ID, route in enumerate(Node.best_Route):
             print("\n")
@@ -41,6 +40,7 @@ def calculate_the_obj(Data, R, Routes, RDPs):
     Gc = Data.Gc
     # create the mapping to find the node quantities  :))
     Q_mapping = {}
+    r_ID = 0
     for i in Gc.nodes:
         for r_ID, route in enumerate(Routes):
             inx = np.where(np.array(route.route) == i)[0]

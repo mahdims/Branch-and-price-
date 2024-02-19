@@ -131,9 +131,10 @@ def CW(Data, All_seq, dis):
             routes = apply_the_merge(dis, routes, selected_move)
             accepted_move = 1
 
-    new_sol = Solution("CW", routes)
-    return new_sol
-
+    if routes:
+        new_sol = Solution("CW", routes)
+        return new_sol
+    return []
 
 
 
