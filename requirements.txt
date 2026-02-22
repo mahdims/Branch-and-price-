@@ -1,0 +1,8 @@
+gurobipy>=9.0
+networkx>=2.5
+numpy>=1.19
+matplotlib>=3.3
+pandas>=1.1
+pandas_ods_reader>=0.1.2
+loguru>=0.5
+cspy>=1.0
